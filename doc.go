@@ -33,7 +33,7 @@
 // metaphone3.go is based on a file that is copyright 2010 by Laurence Philips
 // and is open source.
 //
-// Buy a later metaphone 3 version with better proper name encoding and other
-// corrections, and in a variety of programming languages (but not Go), at
-// http://www.amorphics.com/ for $240 as of 2023-01-10.
+// You can buy a later metaphone 3 version with better proper name encoding
+// and other corrections, and in a variety of programming languages (but not
+// Go), at http://www.amorphics.com/ for $240 as of 2023-01-10.
 package metaphone3

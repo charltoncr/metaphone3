@@ -1,7 +1,7 @@
 // Convenience functions and methods that use Metaphone3.
 // Created 2022-12-16 by Ron Charlton and placed in the public domain.
 //
-// $Id: convenience.go,v 1.37 2023-01-14 15:29:14-05 ron Exp $
+// $Id: convenience.go,v 1.39 2023-01-15 07:45:10-05 ron Exp $
 
 package metaphone3
 
@@ -14,8 +14,8 @@ import (
 	"strings"
 )
 
-// MetaphMap defines a MetaphMap type to store a word list mapped by met to
-// mapper.
+// MetaphMap defines a type to store a word list mapped to a Go map by
+// metaphone3.
 type MetaphMap struct {
 	mapper map[string][]string
 	met    *Metaphone3
@@ -26,8 +26,8 @@ type MetaphMap struct {
 // The MetaphMap can be used with MatchWord to find all words in the
 // MetaphMap that sound like a given word or misspelling.
 // Argument maxLen is 4 in the original Double Metaphone algorithm.
-// Letter case is ignored in the words in wordlist, as are non-alphabetic
-// characters.
+// Letter case is ignored in mapping the words in wordlist, as are
+// non-alphabetic characters.
 func NewMetaphMap(wordlist []string, maxLen int) *MetaphMap {
 	return NewMetaphMapExact(wordlist, maxLen, false, false)
 }
@@ -59,8 +59,8 @@ func NewMetaphMapExact(wordlist []string, maxLen int,
 // AddWordsToMap adds the words in wordlist to an existing MetaphMap.  This
 // can be useful if you have a general word list and a specific user word list
 // to combine into one MetaphMap.
-// Letter case is ignored in the words in wordlist, as are non-alphabetic
-// characters.
+// Letter case is ignored in mapping the words in wordlist, as are
+// non-alphabetic characters.
 func (metaph *MetaphMap) AddWordsToMap(wordlist []string) {
 	for _, word := range wordlist {
 		m, m2 := metaph.met.Encode(word)
@@ -79,7 +79,8 @@ func (metaph *MetaphMap) AddWordsToMap(wordlist []string) {
 // The MetaphMap can be used with MatchWord to find all words in the
 // MetaphMap that sound like a given word or misspelling.
 // Argument maxLen is 4 in the original Double Metaphone algorithm.
-// Letter case and non-alphabetic characters in the file are ignored.
+// Letter case is ignored in mapping the words in the file, as are
+// non-alphabetic characters.
 func NewMetaphMapFromFile(fileName string, maxLen int) (
 	metaph *MetaphMap, err error) {
 	return NewMetaphMapFromFileExact(fileName, maxLen, false, false)
@@ -101,7 +102,8 @@ func NewMetaphMapFromFileExact(fileName string, maxLen int,
 // AddWordsFromFile adds words from a file to an existing MetaphMap.  This
 // can be useful if you have a general word list and a specific user word list
 // to combine into one MetaphMap.
-// Letter case is ignored in the file, as are non-alphabetic characters.
+// Letter case is ignored in mapping the words in the file, as are
+// non-alphabetic characters.
 func (metaph *MetaphMap) AddWordsFromFile(fileName string) error {
 	lines, err := getWordsFromFile(fileName)
 	if err == nil {

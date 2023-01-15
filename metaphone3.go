@@ -2,11 +2,11 @@
 // on 2023-01-05 from the original Java code at
 // https://github.com/OpenRefine/OpenRefine/blob/master/main/src/com/google/refine/clustering/binning/Metaphone3.java
 //
-// $Id: metaphone3.go,v 1.8 2023-01-14 14:40:37-05 ron Exp $
+// $Id: metaphone3.go,v 1.9 2023-01-15 11:05:49-05 ron Exp $
 //
 // This open source Go file is based on Metaphone3.java 2.1.3 that is
 // copyright 2010 by Laurence Philips, and is also open source.
-
+//
 // A later metaphone 3 version with better proper name encoding and other
 // corrections, and in a variety of programming languages (but not Go), is
 // available online for $240 as of 2023-01-10.
