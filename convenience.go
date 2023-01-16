@@ -1,7 +1,7 @@
 // Convenience functions and methods that use Metaphone3.
 // Created 2022-12-16 by Ron Charlton and placed in the public domain.
 //
-// $Id: convenience.go,v 1.39 2023-01-15 07:45:10-05 ron Exp $
+// $Id: convenience.go,v 1.40 2023-01-16 10:43:50-05 ron Exp $
 
 package metaphone3
 
@@ -14,8 +14,8 @@ import (
 	"strings"
 )
 
-// MetaphMap defines a type to store a word list mapped to a Go map by
-// metaphone3.
+// MetaphMap defines a type to store a word list as a Go map indexed by return
+// values from metaphone3.
 type MetaphMap struct {
 	mapper map[string][]string
 	met    *Metaphone3
@@ -158,7 +158,8 @@ func (metaph *MetaphMap) MatchWord(word string) (output []string) {
 	return
 }
 
-// removeDups removes duplicate strings in s.
+// removeDups removes duplicate strings in s, also creating a new string
+// slice as a side effect.
 func removeDups(s []string) (out []string) {
 	m := make(map[string]struct{})
 	for _, w := range s {
@@ -172,7 +173,6 @@ func removeDups(s []string) (out []string) {
 
 // noCRs removes CRs. Assumes UTF-8, ANSI, iso-8859-n or ASCII encoding.
 func noCRs(b []byte) []byte {
-	// bytes.Map would use an additional len(b) buffer and be slower.
 	from := bytes.IndexByte(b, '\r')
 	if from < 0 {
 		return b

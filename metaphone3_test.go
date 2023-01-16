@@ -91,3 +91,11 @@ func TestConvenience(t *testing.T) {
 		t.Errorf("got: %d;  want: 11", len(words))
 	}
 }
+
+func BenchmarkMetaphone3(b *testing.B) {
+	met := NewMetaphone3(6)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		met.Encode("knewmoanya")
+	}
+}

@@ -2,7 +2,7 @@
 // on 2023-01-05 from the original Java code at
 // https://github.com/OpenRefine/OpenRefine/blob/master/main/src/com/google/refine/clustering/binning/Metaphone3.java
 //
-// $Id: metaphone3.go,v 1.9 2023-01-15 11:05:49-05 ron Exp $
+// $Id: metaphone3.go,v 1.11 2023-01-16 11:36:24-05 ron Exp $
 //
 // This open source Go file is based on Metaphone3.java 2.1.3 that is
 // copyright 2010 by Laurence Philips, and is also open source.
@@ -1441,7 +1441,7 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 				StringAt((m_current-3), 7, "GLACIER") ||
 				StringAt(m_current, 5, "CIENT", "CIENC", "CIOUS", "CIATE", "CIATI", "CIATO", "CIABL", "CIARY") ||
 				(((m_current + 2) == m_last) && StringAt(m_current, 3, "CIA", "CIO")) ||
-				(((m_current + 3) == m_last) && StringAt(m_current, 3, "CIAS", "CIOS"))) &&
+				(((m_current + 3) == m_last) && StringAt(m_current, 4, "CIAS", "CIOS"))) &&
 				// exceptions
 				!(StringAt((m_current-4), 11, "ASSOCIATION") ||
 					StringAt(0, 4, "OCIE") ||
@@ -4668,6 +4668,8 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 				m_current += 3
 				return true
 			} else {
+				// Fix for smith and schmidt not returning same code:
+				// next two lines from metaphone.go at line 621: code for SCH
 				if m_current == 0 && !IsVowel(3) && (CharAt(3) != 'W') {
 					MetaphAdd("X", "S")
 				} else {
