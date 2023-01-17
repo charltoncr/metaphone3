@@ -2,7 +2,7 @@
 // on 2023-01-05 from the original Java code at
 // https://github.com/OpenRefine/OpenRefine/blob/master/main/src/com/google/refine/clustering/binning/Metaphone3.java
 //
-// $Id: metaphone3.go,v 1.11 2023-01-16 11:36:24-05 ron Exp $
+// $Id: metaphone3.go,v 2.12 2023-01-17 16:31:36-05 ron Exp $
 //
 // This open source Go file is based on Metaphone3.java 2.1.3 that is
 // copyright 2010 by Laurence Philips, and is also open source.
@@ -176,7 +176,9 @@ are different in the United Kingdom, for example "tube" -> "CHOOBE" -> XAP rathe
 
 package metaphone3
 
-import "strings"
+import (
+	"strings"
+)
 
 // Metaphone3 defines a type and return length for Metaphone3, as well as
 // recording whether vowels after the first character are encoded and whether
@@ -348,18 +350,51 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 		return m_inWord[at]
 	}
 
-	// StringAt determines if any of a list of string arguments appear
-	// in m_inWord at start and length long.
-	StringAt := func(start, length int, s ...string) bool {
-		if start >= 0 && (start+length) <= m_length {
-			target := string(m_inWord[start : start+length])
-			for i := 0; i < len(s); i++ {
-				if s[i] == target {
-					return true
+	// StringAtPos determines if any of a list of string arguments appear
+	// in m_inWord at start.
+	StringAtPos := func(start int, s ...string) bool {
+		if len(s) > 0 {
+			if start >= 0 {
+			forOuterLoop:
+				for _, str := range s {
+					if (start + len(str)) <= m_length {
+						j := start
+						for _, r := range str {
+							if r != m_inWord[j] {
+								continue forOuterLoop
+							}
+							j++
+						}
+						return true
+					}
 				}
 			}
 		}
 		return false
+	}
+
+	// StringAt determines if any of a list of string arguments appear
+	// in m_inWord at m_current+index.
+	StringAt := func(index int, s ...string) bool {
+		start := m_current + index
+		return StringAtPos(start, s...)
+	}
+
+	// StringAtStart determines if any of a list of string arguments appear
+	// in m_inWord at its beginning.
+	StringAtStart := func(s ...string) bool {
+		return StringAtPos(0, s...)
+	}
+
+	// StringAtEnd determines if any of a list of string arguments appear
+	// in m_inWord at its end.
+	StringAtEnd := func(s ...string) bool {
+		if len(s) > 0 {
+			start := m_length - len(s[0])
+			return StringAtPos(start, s...)
+		} else {
+			return false
+		}
 	}
 
 	/**
@@ -379,8 +414,8 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 *
 	 */
 	SlavoGermanic := func() bool {
-		return StringAt(0, 3, "SCH") ||
-			StringAt(0, 2, "SW") ||
+		return StringAtStart("SCH") ||
+			StringAtStart("SW") ||
 			(CharAt(0) == 'J') ||
 			(CharAt(0) == 'W')
 	}
@@ -412,17 +447,17 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 			return m_length
 		}
 		for IsVowel(at) || (CharAt(at) == 'W') {
-			if StringAt(at, 4, "WICZ", "WITZ", "WIAK") ||
-				StringAt((at-1), 5, "EWSKI", "EWSKY", "OWSKI", "OWSKY") ||
-				(StringAt(at, 5, "WICKI", "WACKI") && ((at + 4) == m_last)) {
+			if StringAtPos(at, "WICZ", "WITZ", "WIAK") ||
+				StringAtPos(at-1, "EWSKI", "EWSKY", "OWSKI", "OWSKY") ||
+				(StringAtPos(at, "WICKI", "WACKI") && ((at + 4) == m_last)) {
 				break
 			}
 			at++
 			if ((CharAt(at-1) == 'W') && (CharAt(at) == 'H')) &&
-				!(StringAt(at, 3, "HOP") ||
-					StringAt(at, 4, "HIDE", "HARD", "HEAD", "HAWK", "HERD", "HOOK", "HAND", "HOLE") ||
-					StringAt(at, 5, "HEART", "HOUSE", "HOUND") ||
-					StringAt(at, 6, "HAMMER")) {
+				!(StringAtPos(at, "HOP") ||
+					StringAtPos(at, "HIDE", "HARD", "HEAD", "HAWK", "HERD", "HOOK", "HAND", "HOLE") ||
+					StringAtPos(at, "HEART", "HOUSE", "HOUND") ||
+					StringAtPos(at, "HAMMER")) {
 				at++
 			}
 			if at >= m_length {
@@ -511,11 +546,11 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 */
 	O_Silent := func() bool {
 		// if "iron" at beginning or end of word and not "irony"
-		if (CharAt(m_current) == 'O') && StringAt((m_current-2), 4, "IRON") {
-			if (StringAt(0, 4, "IRON") ||
-				(StringAt((m_current-2), 4, "IRON") &&
+		if (CharAt(m_current) == 'O') && StringAt(-2, "IRON") {
+			if (StringAtStart("IRON") ||
+				(StringAt(-2, "IRON") &&
 					(m_last == (m_current + 1)))) &&
-				!StringAt((m_current-2), 6, "IRONIC") {
+				!StringAt(-2, "IRONIC") {
 				return true
 			}
 		}
@@ -532,7 +567,7 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 		return (m_current == (at - 1)) &&
 			(m_length > (at + 1)) &&
 			(IsVowel((at + 1)) ||
-				(StringAt(at, 2, "ST", "SL") &&
+				(StringAtPos(at, "ST", "SL") &&
 					(m_length > (at + 2))))
 	}
 
@@ -544,28 +579,28 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	E_Pronouncing_Suffix := func(at int) bool {
 		// e.g. 'bridgewood' - the other vowels will get eaten
 		// up so we need to put one in here
-		if (m_length == (at + 4)) && StringAt(at, 4, "WOOD") {
+		if (m_length == (at + 4)) && StringAtPos(at, "WOOD") {
 			return true
 		}
 
 		// same as above
-		if (m_length == (at + 5)) && StringAt(at, 5, "WATER", "WORTH") {
+		if (m_length == (at + 5)) && StringAtPos(at, "WATER", "WORTH") {
 			return true
 		}
 
 		// e.g. 'bridgette'
-		if (m_length == (at + 3)) && StringAt(at, 3, "TTE", "LIA", "NOW", "ROS", "RAS") {
+		if (m_length == (at + 3)) && StringAtPos(at, "TTE", "LIA", "NOW", "ROS", "RAS") {
 			return true
 		}
 
 		// e.g. 'olena'
-		if (m_length == (at + 2)) && StringAt(at, 2, "TA", "TT", "NA", "NO", "NE",
+		if (m_length == (at + 2)) && StringAtPos(at, "TA", "TT", "NA", "NO", "NE",
 			"RS", "RE", "LA", "AU", "RO", "RA") {
 			return true
 		}
 
 		// e.g. 'bridget'
-		if (m_length == (at + 1)) && StringAt(at, 1, "T", "R") {
+		if (m_length == (at + 1)) && StringAtPos(at, "T", "R") {
 			return true
 		}
 
@@ -579,21 +614,21 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 */
 	Silent_Internal_E := func() bool {
 		// 'olesen' but not 'olen'	RAKE BLAKE
-		return (StringAt(0, 3, "OLE") &&
+		return (StringAtStart("OLE") &&
 			E_Silent_Suffix(3) && !E_Pronouncing_Suffix(3)) ||
-			(StringAt(0, 4, "BARE", "FIRE", "FORE", "GATE", "HAGE", "HAVE",
+			(StringAtStart("BARE", "FIRE", "FORE", "GATE", "HAGE", "HAVE",
 				"HAZE", "HOLE", "CAPE", "HUSE", "LACE", "LINE",
 				"LIVE", "LOVE", "MORE", "MOSE", "MORE", "NICE",
 				"RAKE", "ROBE", "ROSE", "SISE", "SIZE", "WARE",
 				"WAKE", "WISE", "WINE") &&
 				E_Silent_Suffix(4) && !E_Pronouncing_Suffix(4)) ||
-			(StringAt(0, 5, "BLAKE", "BRAKE", "BRINE", "CARLE", "CLEVE", "DUNNE",
+			(StringAtStart("BLAKE", "BRAKE", "BRINE", "CARLE", "CLEVE", "DUNNE",
 				"HEDGE", "HOUSE", "JEFFE", "LUNCE", "STOKE", "STONE",
 				"THORE", "WEDGE", "WHITE") &&
 				E_Silent_Suffix(5) && !E_Pronouncing_Suffix(5)) ||
-			(StringAt(0, 6, "BRIDGE", "CHEESE") &&
+			(StringAtStart("BRIDGE", "CHEESE") &&
 				E_Silent_Suffix(6) && !E_Pronouncing_Suffix(6)) ||
-			StringAt((m_current-5), 7, "CHARLES")
+			StringAt(-5, "CHARLES")
 	}
 
 	/**
@@ -613,32 +648,32 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 */
 	E_Pronounced_At_End := func() bool {
 		return (m_current == m_last) &&
-			(StringAt((m_current-6), 7, "STROPHE") ||
+			(StringAt(-6, "STROPHE") ||
 				// if a vowel is before the 'E', vowel eater will have eaten it.
 				//otherwise, consonant + 'E' will need 'E' pronounced
 				(m_length == 2) ||
 				((m_length == 3) && !IsVowel(0)) ||
 				// these german name endings can be relied on to have the 'e' pronounced
-				(StringAt((m_last-2), 3, "BKE", "DKE", "FKE", "KKE", "LKE",
+				(StringAtEnd("BKE", "DKE", "FKE", "KKE", "LKE",
 					"NKE", "MKE", "PKE", "TKE", "VKE", "ZKE") &&
-					!StringAt(0, 5, "FINKE", "FUNKE") &&
-					!StringAt(0, 6, "FRANKE")) ||
-				StringAt((m_last-4), 5, "SCHKE") ||
-				(StringAt(0, 4, "ACME", "NIKE", "CAFE", "RENE", "LUPE", "JOSE", "ESME") && (m_length == 4)) ||
-				(StringAt(0, 5, "LETHE", "CADRE", "TILDE", "SIGNE", "POSSE", "LATTE", "ANIME", "DOLCE", "CROCE",
+					!StringAtStart("FINKE", "FUNKE") &&
+					!StringAtStart("FRANKE")) ||
+				StringAtEnd("SCHKE") ||
+				(StringAtStart("ACME", "NIKE", "CAFE", "RENE", "LUPE", "JOSE", "ESME") && (m_length == 4)) ||
+				(StringAtStart("LETHE", "CADRE", "TILDE", "SIGNE", "POSSE", "LATTE", "ANIME", "DOLCE", "CROCE",
 					"ADOBE", "OUTRE", "JESSE", "JAIME", "JAFFE", "BENGE", "RUNGE",
 					"CHILE", "DESME", "CONDE", "URIBE", "LIBRE", "ANDRE") && (m_length == 5)) ||
-				(StringAt(0, 6, "HECATE", "PSYCHE", "DAPHNE", "PENSKE", "CLICHE", "RECIPE",
+				(StringAtStart("HECATE", "PSYCHE", "DAPHNE", "PENSKE", "CLICHE", "RECIPE",
 					"TAMALE", "SESAME", "SIMILE", "FINALE", "KARATE", "RENATE", "SHANTE",
 					"OBERLE", "COYOTE", "KRESGE", "STONGE", "STANGE", "SWAYZE", "FUENTE",
 					"SALOME", "URRIBE") && (m_length == 6)) ||
-				(StringAt(0, 7, "ECHIDNE", "ARIADNE", "MEINEKE", "PORSCHE", "ANEMONE", "EPITOME",
+				(StringAtStart("ECHIDNE", "ARIADNE", "MEINEKE", "PORSCHE", "ANEMONE", "EPITOME",
 					"SYNCOPE", "SOUFFLE", "ATTACHE", "MACHETE", "KARAOKE", "BUKKAKE",
 					"VICENTE", "ELLERBE", "VERSACE") && (m_length == 7)) ||
-				(StringAt(0, 8, "PENELOPE", "CALLIOPE", "CHIPOTLE", "ANTIGONE", "KAMIKAZE", "EURIDICE",
+				(StringAtStart("PENELOPE", "CALLIOPE", "CHIPOTLE", "ANTIGONE", "KAMIKAZE", "EURIDICE",
 					"YOSEMITE", "FERRANTE") && (m_length == 8)) ||
-				(StringAt(0, 9, "HYPERBOLE", "GUACAMOLE", "XANTHIPPE") && (m_length == 9)) ||
-				(StringAt(0, 10, "SYNECDOCHE") && (m_length == 10)))
+				(StringAtStart("HYPERBOLE", "GUACAMOLE", "XANTHIPPE") && (m_length == 9)) ||
+				(StringAtStart("SYNECDOCHE") && (m_length == 10)))
 	}
 
 	/**
@@ -648,16 +683,16 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 */
 	Skip_Silent_UE := func() bool {
 		// always silent except for cases listed below
-		if (StringAt((m_current-1), 3, "QUE", "GUE") &&
-			!StringAt(0, 8, "BARBEQUE", "PALENQUE", "APPLIQUE") &&
+		if (StringAt(-1, "QUE", "GUE") &&
+			!StringAtStart("BARBEQUE", "PALENQUE", "APPLIQUE") &&
 			// '-que' cases usually french but missing the acute accent
-			!StringAt(0, 6, "RISQUE") &&
-			!StringAt((m_current-3), 5, "ARGUE", "SEGUE") &&
-			!StringAt(0, 7, "PIROGUE", "ENRIQUE") &&
-			!StringAt(0, 10, "COMMUNIQUE")) &&
+			!StringAtStart("RISQUE") &&
+			!StringAt(-3, "ARGUE", "SEGUE") &&
+			!StringAtStart("PIROGUE", "ENRIQUE") &&
+			!StringAtStart("COMMUNIQUE")) &&
 			(m_current > 1) &&
 			(((m_current + 1) == m_last) ||
-				StringAt(0, 7, "JACQUES")) {
+				StringAtStart("JACQUES")) {
 			m_current = SkipVowels(m_current)
 			return true
 		}
@@ -682,21 +717,21 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 			// also silent if before plural 's'
 			// or past tense or participle 'd', e.g.
 			// 'grapes' and 'banished' => PNXT
-			(StringAt(m_last, 1, "S", "D") &&
+			(StringAtEnd("S", "D") &&
 				(m_current > 1) &&
 				((m_current + 1) == m_last) &&
 				// and not e.g. "nested", "rises", or "pieces" => RASAS
-				!(StringAt((m_current-1), 3, "TED", "SES", "CES") ||
-					StringAt(0, 9, "ANTIPODES", "ANOPHELES") ||
-					StringAt(0, 8, "MOHAMMED", "MUHAMMED", "MOUHAMED") ||
-					StringAt(0, 7, "MOHAMED") ||
-					StringAt(0, 6, "NORRED", "MEDVED", "MERCED", "ALLRED", "KHALED", "RASHED", "MASJED") ||
-					StringAt(0, 5, "JARED", "AHMED", "HAMED", "JAVED") ||
-					StringAt(0, 4, "ABED", "IMED"))) ||
+				!(StringAt(-1, "TED", "SES", "CES") ||
+					StringAtStart("ANTIPODES", "ANOPHELES") ||
+					StringAtStart("MOHAMMED", "MUHAMMED", "MOUHAMED") ||
+					StringAtStart("MOHAMED") ||
+					StringAtStart("NORRED", "MEDVED", "MERCED", "ALLRED", "KHALED", "RASHED", "MASJED") ||
+					StringAtStart("JARED", "AHMED", "HAMED", "JAVED") ||
+					StringAtStart("ABED", "IMED"))) ||
 			// e.g.  'wholeness', 'boneless', 'barely'
-			(StringAt((m_current+1), 4, "NESS", "LESS") && ((m_current + 4) == m_last)) ||
-			(StringAt((m_current+1), 2, "LY") && ((m_current + 2) == m_last) &&
-				!StringAt(0, 6, "CICELY"))
+			(StringAt(+1, "NESS", "LESS") && ((m_current + 4) == m_last)) ||
+			(StringAt(+1, "LY") && ((m_current + 2) == m_last) &&
+				!StringAtStart("CICELY"))
 	}
 
 	/**
@@ -711,27 +746,27 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	E_Pronounced_Exceptions := func() bool {
 		// greek names e.g. "herakles" or hispanic names e.g. "robles", where 'e' is pronounced, other exceptions
 		return (((m_current + 1) == m_last) &&
-			(StringAt((m_current-3), 5, "OCLES", "ACLES", "AKLES") ||
-				StringAt(0, 4, "INES") ||
-				StringAt(0, 5, "LOPES", "ESTES", "GOMES", "NUNES", "ALVES", "ICKES",
+			(StringAt(-3, "OCLES", "ACLES", "AKLES") ||
+				StringAtStart("INES") ||
+				StringAtStart("LOPES", "ESTES", "GOMES", "NUNES", "ALVES", "ICKES",
 					"INNES", "PERES", "WAGES", "NEVES", "BENES", "DONES") ||
-				StringAt(0, 6, "CORTES", "CHAVES", "VALDES", "ROBLES", "TORRES", "FLORES", "BORGES",
+				StringAtStart("CORTES", "CHAVES", "VALDES", "ROBLES", "TORRES", "FLORES", "BORGES",
 					"NIEVES", "MONTES", "SOARES", "VALLES", "GEDDES", "ANDRES", "VIAJES",
 					"CALLES", "FONTES", "HERMES", "ACEVES", "BATRES", "MATHES") ||
-				StringAt(0, 7, "DELORES", "MORALES", "DOLORES", "ANGELES", "ROSALES", "MIRELES", "LINARES",
+				StringAtStart("DELORES", "MORALES", "DOLORES", "ANGELES", "ROSALES", "MIRELES", "LINARES",
 					"PERALES", "PAREDES", "BRIONES", "SANCHES", "CAZARES", "REVELES", "ESTEVES",
 					"ALVARES", "MATTHES", "SOLARES", "CASARES", "CACERES", "STURGES", "RAMIRES",
 					"FUNCHES", "BENITES", "FUENTES", "PUENTES", "TABARES", "HENTGES", "VALORES") ||
-				StringAt(0, 8, "GONZALES", "MERCEDES", "FAGUNDES", "JOHANNES", "GONSALES", "BERMUDES",
+				StringAtStart("GONZALES", "MERCEDES", "FAGUNDES", "JOHANNES", "GONSALES", "BERMUDES",
 					"CESPEDES", "BETANCES", "TERRONES", "DIOGENES", "CORRALES", "CABRALES",
 					"MARTINES", "GRAJALES") ||
-				StringAt(0, 9, "CERVANTES", "FERNANDES", "GONCALVES", "BENEVIDES", "CIFUENTES", "SIFUENTES",
+				StringAtStart("CERVANTES", "FERNANDES", "GONCALVES", "BENEVIDES", "CIFUENTES", "SIFUENTES",
 					"SERVANTES", "HERNANDES", "BENAVIDES") ||
-				StringAt(0, 10, "ARCHIMEDES", "CARRIZALES", "MAGALLANES"))) ||
-			StringAt(m_current-2, 4, "FRED", "DGES", "DRED", "GNES") ||
-			StringAt((m_current-5), 7, "PROBLEM", "RESPLEN") ||
-			StringAt((m_current-4), 6, "REPLEN") ||
-			StringAt((m_current-3), 4, "SPLE")
+				StringAtStart("ARCHIMEDES", "CARRIZALES", "MAGALLANES"))) ||
+			StringAt(-2, "FRED", "DGES", "DRED", "GNES") ||
+			StringAt(-5, "PROBLEM", "RESPLEN") ||
+			StringAt(-4, "REPLEN") ||
+			StringAt(-3, "SPLE")
 	}
 
 	/**
@@ -745,15 +780,15 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	Encode_E_Pronounced := func() {
 		// special cases with two pronunciations
 		// 'agape' 'lame' 'resume'
-		if (StringAt(0, 4, "LAME", "SAKE", "PATE") && (m_length == 4)) ||
-			(StringAt(0, 5, "AGAPE") && (m_length == 5)) ||
-			((m_current == 5) && StringAt(0, 6, "RESUME")) {
+		if (StringAtStart("LAME", "SAKE", "PATE") && (m_length == 4)) ||
+			(StringAtStart("AGAPE") && (m_length == 5)) ||
+			((m_current == 5) && StringAtStart("RESUME")) {
 			MetaphAdd("", "A")
 			return
 		}
 
 		// special case "inge" => 'INGA', 'INJ'
-		if StringAt(0, 4, "INGE") && (m_length == 4) {
+		if StringAtStart("INGE") && (m_length == 4) {
 			MetaphAdd("A", "")
 			return
 		}
@@ -761,7 +796,7 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 		// special cases with two pronunciations
 		// special handling due to the difference in
 		// the pronunciation of the '-D'
-		if (m_current == 5) && StringAt(0, 7, "BLESSED", "LEARNED") {
+		if (m_current == 5) && StringAtStart("BLESSED", "LEARNED") {
 			MetaphAddExactApprox("D", "AD", "T", "AT")
 			m_current += 2
 			return
@@ -786,10 +821,10 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 */
 	Encode_Silent_B := func() bool {
 		//'debt', 'doubt', 'subtle'
-		if StringAt((m_current-2), 4, "DEBT") ||
-			StringAt((m_current-2), 5, "SUBTL") ||
-			StringAt((m_current-2), 6, "SUBTIL") ||
-			StringAt((m_current-3), 5, "DOUBT") {
+		if StringAt(-2, "DEBT") ||
+			StringAt(-2, "SUBTL") ||
+			StringAt(-2, "SUBTIL") ||
+			StringAt(-3, "DOUBT") {
 			MetaphAdd("T")
 			m_current += 2
 			return true
@@ -829,7 +864,7 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 			}
 		}
 
-		if !(!IsVowel(m_current-2) && StringAt((m_current-1), 4, "LEWA", "LEWO", "LEWI")) {
+		if !(!IsVowel(m_current-2) && StringAt(-1, "LEWA", "LEWO", "LEWI")) {
 			m_current = SkipVowels(m_current)
 		} else {
 			m_current++
@@ -871,13 +906,13 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	Encode_CH_To_H := func() bool {
 		// hebrew => 'H', e.g. 'channukah', 'chabad'
 		if ((m_current == 0) &&
-			(StringAt((m_current+2), 3, "AIM", "ETH", "ELM") ||
-				StringAt((m_current+2), 4, "ASID", "AZAN") ||
-				StringAt((m_current+2), 5, "UPPAH", "UTZPA", "ALLAH", "ALUTZ", "AMETZ") ||
-				StringAt((m_current+2), 6, "ESHVAN", "ADARIM", "ANUKAH") ||
-				StringAt((m_current+2), 7, "ALLLOTH", "ANNUKAH", "AROSETH"))) ||
+			(StringAt(+2, "AIM", "ETH", "ELM") ||
+				StringAt(+2, "ASID", "AZAN") ||
+				StringAt(+2, "UPPAH", "UTZPA", "ALLAH", "ALUTZ", "AMETZ") ||
+				StringAt(+2, "ESHVAN", "ADARIM", "ANUKAH") ||
+				StringAt(+2, "ALLLOTH", "ANNUKAH", "AROSETH"))) ||
 			// and an irish name with the same encoding
-			StringAt((m_current-3), 7, "CLACHAN") {
+			StringAt(-3, "CLACHAN") {
 			MetaphAdd("H")
 			AdvanceCounter(3, 2)
 			return true
@@ -894,7 +929,7 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 */
 	Encode_Silent_C_At_Beginning := func() bool {
 		//skip these when at start of word
-		if (m_current == 0) && StringAt(m_current, 2, "CT", "CN") {
+		if (m_current == 0) && StringAt(0, "CT", "CN") {
 			m_current += 1
 			return true
 		}
@@ -912,10 +947,10 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	Encode_CA_To_S := func() bool {
 		// Special case: 'caesar'.
 		// Also, where cedilla not used, as in "linguica" => LNKS
-		if ((m_current == 0) && StringAt(m_current, 4, "CAES", "CAEC", "CAEM")) ||
-			StringAt(0, 8, "FRANCAIS", "FRANCAIX", "LINGUICA") ||
-			StringAt(0, 6, "FACADE") ||
-			StringAt(0, 9, "GONCALVES", "PROVENCAL") {
+		if ((m_current == 0) && StringAt(0, "CAES", "CAEC", "CAEM")) ||
+			StringAtStart("FRANCAIS", "FRANCAIX", "LINGUICA") ||
+			StringAtStart("FACADE") ||
+			StringAtStart("GONCALVES", "PROVENCAL") {
 			MetaphAdd("S")
 			AdvanceCounter(2, 1)
 			return true
@@ -933,11 +968,11 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 */
 	Encode_CO_To_S := func() bool {
 		// e.g. 'coelecanth' => SLKN0
-		if (StringAt(m_current, 4, "COEL") &&
+		if (StringAt(0, "COEL") &&
 			(IsVowel(m_current+4) || ((m_current + 3) == m_last))) ||
-			StringAt(m_current, 5, "COENA", "COENO") ||
-			StringAt(0, 8, "FRANCOIS", "MELANCON") ||
-			StringAt(0, 6, "GARCON") {
+			StringAt(0, "COENA", "COENO") ||
+			StringAtStart("FRANCOIS", "MELANCON") ||
+			StringAtStart("GARCON") {
 			MetaphAdd("S")
 			AdvanceCounter(3, 1)
 			return true
@@ -954,10 +989,10 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 */
 	Encode_CHAE := func() bool {
 		// e.g. 'michael'
-		if (m_current > 0) && StringAt((m_current+2), 2, "AE") {
-			if StringAt(0, 7, "RACHAEL") {
+		if (m_current > 0) && StringAt(+2, "AE") {
+			if StringAtStart("RACHAEL") {
 				MetaphAdd("X")
-			} else if !StringAt((m_current - 1), 1, "C", "K", "G", "Q") {
+			} else if !StringAt(-1, "C", "K", "G", "Q") {
 				MetaphAdd("K")
 			}
 
@@ -976,12 +1011,12 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 */
 	Encode_Silent_CH := func() bool {
 		// '-ch-' not pronounced
-		if StringAt((m_current-2), 7, "FUCHSIA") ||
-			StringAt((m_current-2), 5, "YACHT") ||
-			StringAt(0, 8, "STRACHAN") ||
-			StringAt(0, 8, "CRICHTON") ||
-			(StringAt((m_current-3), 6, "DRACHM")) &&
-				!StringAt((m_current-3), 7, "DRACHMA") {
+		if StringAt(-2, "FUCHSIA") ||
+			StringAt(-2, "YACHT") ||
+			StringAtStart("STRACHAN") ||
+			StringAtStart("CRICHTON") ||
+			(StringAt(-3, "DRACHM")) &&
+				!StringAt(-3, "DRACHMA") {
 			m_current += 2
 			return true
 		}
@@ -998,20 +1033,20 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 */
 	Encode_CH_To_X := func() bool {
 		// e.g. 'approach', 'beach'
-		if (StringAt((m_current-2), 4, "OACH", "EACH", "EECH", "OUCH", "OOCH", "MUCH", "SUCH") &&
-			!StringAt((m_current-3), 5, "JOACH")) ||
+		if (StringAt(-2, "OACH", "EACH", "EECH", "OUCH", "OOCH", "MUCH", "SUCH") &&
+			!StringAt(-3, "JOACH")) ||
 			// e.g. 'dacha', 'macho'
-			(((m_current + 2) == m_last) && StringAt((m_current-1), 4, "ACHA", "ACHO")) ||
-			(StringAt(m_current, 4, "CHOT", "CHOD", "CHAT") && ((m_current + 3) == m_last)) ||
-			((StringAt((m_current-1), 4, "OCHE") && ((m_current + 2) == m_last)) &&
-				!StringAt((m_current-2), 5, "DOCHE")) ||
-			StringAt((m_current-4), 6, "ATTACH", "DETACH", "KOVACH") ||
-			StringAt((m_current-5), 7, "SPINACH") ||
-			StringAt(0, 6, "MACHAU") ||
-			StringAt((m_current-4), 8, "PARACHUT") ||
-			StringAt((m_current-5), 8, "MASSACHU") ||
-			(StringAt((m_current-3), 5, "THACH") && !StringAt((m_current-1), 4, "ACHE")) ||
-			StringAt((m_current-2), 6, "VACHON") {
+			(((m_current + 2) == m_last) && StringAt(-1, "ACHA", "ACHO")) ||
+			(StringAt(0, "CHOT", "CHOD", "CHAT") && ((m_current + 3) == m_last)) ||
+			((StringAt(-1, "OCHE") && ((m_current + 2) == m_last)) &&
+				!StringAt(-2, "DOCHE")) ||
+			StringAt(-4, "ATTACH", "DETACH", "KOVACH") ||
+			StringAt(-5, "SPINACH") ||
+			StringAtStart("MACHAU") ||
+			StringAt(-4, "PARACHUT") ||
+			StringAt(-5, "MASSACHU") ||
+			(StringAt(-3, "THACH") && !StringAt(-1, "ACHE")) ||
+			StringAt(-2, "VACHON") {
 			MetaphAdd("X")
 			m_current += 2
 			return true
@@ -1031,13 +1066,13 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 		//'ache', 'echo', alternate spelling of 'michael'
 		if ((m_current == 1) && RootOrInflections(m_inWord, "ACHE")) ||
 			(((m_current > 3) && RootOrInflections(m_inWord[m_current-1:], "ACHE")) &&
-				(StringAt(0, 3, "EAR") ||
-					StringAt(0, 4, "HEAD", "BACK") ||
-					StringAt(0, 5, "HEART", "BELLY", "TOOTH"))) ||
-			StringAt((m_current-1), 4, "ECHO") ||
-			StringAt((m_current-2), 7, "MICHEAL") ||
-			StringAt((m_current-4), 7, "JERICHO") ||
-			StringAt((m_current-5), 7, "LEPRECH") {
+				(StringAtStart("EAR") ||
+					StringAtStart("HEAD", "BACK") ||
+					StringAtStart("HEART", "BELLY", "TOOTH"))) ||
+			StringAt(-1, "ECHO") ||
+			StringAt(-2, "MICHEAL") ||
+			StringAt(-4, "JERICHO") ||
+			StringAt(-5, "LEPRECH") {
 			MetaphAdd("K", "X")
 			m_current += 2
 			return true
@@ -1058,39 +1093,39 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 		// "<consonant><vowel>CH-" implies a german word where 'ch' => K
 		if ((m_current > 1) &&
 			!IsVowel(m_current-2) &&
-			StringAt((m_current-1), 3, "ACH") &&
-			!StringAt((m_current-2), 7, "MACHADO", "MACHUCA", "LACHANC", "LACHAPE", "KACHATU") &&
-			!StringAt((m_current-3), 7, "KHACHAT") &&
+			StringAt(-1, "ACH") &&
+			!StringAt(-2, "MACHADO", "MACHUCA", "LACHANC", "LACHAPE", "KACHATU") &&
+			!StringAt(-3, "KHACHAT") &&
 			((CharAt(m_current+2) != 'I') &&
 				((CharAt(m_current+2) != 'E') ||
-					StringAt((m_current-2), 6, "BACHER", "MACHER", "MACHEN", "LACHER"))) ||
+					StringAt(-2, "BACHER", "MACHER", "MACHEN", "LACHER"))) ||
 			// e.g. 'brecht', 'fuchs'
-			(StringAt((m_current+2), 1, "T", "S") &&
-				!(StringAt(0, 11, "WHICHSOEVER") || StringAt(0, 9, "LUNCHTIME"))) ||
+			(StringAt(+2, "T", "S") &&
+				!(StringAtStart("WHICHSOEVER") || StringAtStart("LUNCHTIME"))) ||
 			// e.g. 'andromache'
-			StringAt(0, 4, "SCHR") ||
-			((m_current > 2) && StringAt((m_current-2), 5, "MACHE")) ||
-			((m_current == 2) && StringAt((m_current-2), 4, "ZACH")) ||
-			StringAt((m_current-4), 6, "SCHACH") ||
-			StringAt((m_current-1), 5, "ACHEN") ||
-			StringAt((m_current-3), 5, "SPICH", "ZURCH", "BUECH") ||
-			(StringAt((m_current-3), 5, "KIRCH", "JOACH", "BLECH", "MALCH") &&
+			StringAtStart("SCHR") ||
+			((m_current > 2) && StringAt(-2, "MACHE")) ||
+			((m_current == 2) && StringAt(-2, "ZACH")) ||
+			StringAt(-4, "SCHACH") ||
+			StringAt(-1, "ACHEN") ||
+			StringAt(-3, "SPICH", "ZURCH", "BUECH") ||
+			(StringAt(-3, "KIRCH", "JOACH", "BLECH", "MALCH") &&
 				// "kirch" and "blech" both get 'X'
-				!(StringAt((m_current-3), 8, "KIRCHNER") || ((m_current + 1) == m_last))) ||
-			(((m_current + 1) == m_last) && StringAt((m_current-2), 4, "NICH", "LICH", "BACH")) ||
+				!(StringAt(-3, "KIRCHNER") || ((m_current + 1) == m_last))) ||
+			(((m_current + 1) == m_last) && StringAt(-2, "NICH", "LICH", "BACH")) ||
 			(((m_current + 1) == m_last) &&
-				StringAt((m_current-3), 5, "URICH", "BRICH", "ERICH", "DRICH", "NRICH") &&
-				!StringAt((m_current-5), 7, "ALDRICH") &&
-				!StringAt((m_current-6), 8, "GOODRICH") &&
-				!StringAt((m_current-7), 9, "GINGERICH"))) ||
-			(((m_current + 1) == m_last) && StringAt((m_current-4), 6, "ULRICH", "LFRICH", "LLRICH",
+				StringAt(-3, "URICH", "BRICH", "ERICH", "DRICH", "NRICH") &&
+				!StringAt(-5, "ALDRICH") &&
+				!StringAt(-6, "GOODRICH") &&
+				!StringAt(-7, "GINGERICH"))) ||
+			(((m_current + 1) == m_last) && StringAt(-4, "ULRICH", "LFRICH", "LLRICH",
 				"EMRICH", "ZURICH", "EYRICH")) ||
 			// e.g., 'wachtler', 'wechsler', but not 'tichner'
-			((StringAt((m_current-1), 1, "A", "O", "U", "E") || (m_current == 0)) &&
-				StringAt((m_current+2), 1, "L", "R", "N", "M", "B", "H", "F", "V", "W", " ")) {
+			((StringAt(-1, "A", "O", "U", "E") || (m_current == 0)) &&
+				StringAt(+2, "L", "R", "N", "M", "B", "H", "F", "V", "W", " ")) {
 			// "CHR/L-" e.g. 'chris' do not get
 			// alt pronunciation of 'X'
-			if StringAt((m_current+2), 1, "R", "L") || SlavoGermanic() {
+			if StringAt(+2, "R", "L") || SlavoGermanic() {
 				MetaphAdd("K")
 			} else {
 				MetaphAdd("K", "X")
@@ -1110,28 +1145,28 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 *
 	 */
 	Encode_ARCH := func() bool {
-		if StringAt((m_current - 2), 4, "ARCH") {
+		if StringAt(-2, "ARCH") {
 			// "-ARCH-" has many combining forms where "-CH-" => K because of its
 			// derivation from the greek
-			if ((IsVowel(m_current+2) && StringAt((m_current-2), 5, "ARCHA", "ARCHI", "ARCHO", "ARCHU", "ARCHY")) ||
-				StringAt((m_current-2), 6, "ARCHEA", "ARCHEG", "ARCHEO", "ARCHET", "ARCHEL", "ARCHES", "ARCHEP",
+			if ((IsVowel(m_current+2) && StringAt(-2, "ARCHA", "ARCHI", "ARCHO", "ARCHU", "ARCHY")) ||
+				StringAt(-2, "ARCHEA", "ARCHEG", "ARCHEO", "ARCHET", "ARCHEL", "ARCHES", "ARCHEP",
 					"ARCHEM", "ARCHEN") ||
-				(StringAt((m_current-2), 4, "ARCH") && ((m_current + 1) == m_last)) ||
-				StringAt(0, 7, "MENARCH")) &&
+				(StringAt(-2, "ARCH") && ((m_current + 1) == m_last)) ||
+				StringAtStart("MENARCH")) &&
 				(!RootOrInflections(m_inWord, "ARCH") &&
-					!StringAt((m_current-4), 6, "SEARCH", "POARCH") &&
-					!StringAt(0, 9, "ARCHENEMY", "ARCHIBALD", "ARCHULETA", "ARCHAMBAU") &&
-					!StringAt(0, 6, "ARCHER", "ARCHIE") &&
-					!((((StringAt((m_current-3), 5, "LARCH", "MARCH", "PARCH") ||
-						StringAt((m_current-4), 6, "STARCH")) &&
-						!(StringAt(0, 6, "EPARCH") ||
-							StringAt(0, 7, "NOMARCH") ||
-							StringAt(0, 8, "EXILARCH", "HIPPARCH", "MARCHESE") ||
-							StringAt(0, 9, "ARISTARCH") ||
-							StringAt(0, 9, "MARCHETTI"))) ||
+					!StringAt(-4, "SEARCH", "POARCH") &&
+					!StringAtStart("ARCHENEMY", "ARCHIBALD", "ARCHULETA", "ARCHAMBAU") &&
+					!StringAtStart("ARCHER", "ARCHIE") &&
+					!((((StringAt(-3, "LARCH", "MARCH", "PARCH") ||
+						StringAt(-4, "STARCH")) &&
+						!(StringAtStart("EPARCH") ||
+							StringAtStart("NOMARCH") ||
+							StringAtStart("EXILARCH", "HIPPARCH", "MARCHESE") ||
+							StringAtStart("ARISTARCH") ||
+							StringAtStart("MARCHETTI"))) ||
 						RootOrInflections(m_inWord, "STARCH")) &&
-						(!StringAt((m_current-2), 5, "ARCHU", "ARCHY") ||
-							StringAt(0, 7, "STARCHY")))) {
+						(!StringAt(-2, "ARCHU", "ARCHY") ||
+							StringAtStart("STARCHY")))) {
 				MetaphAdd("K", "X")
 			} else {
 				MetaphAdd("X")
@@ -1151,40 +1186,40 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 */
 	Encode_Greek_CH_Initial := func() bool {
 		// greek roots e.g. 'chemistry', 'chorus', ch at beginning of root
-		if (StringAt(m_current, 6, "CHAMOM", "CHARAC", "CHARIS", "CHARTO", "CHARTU", "CHARYB", "CHRIST", "CHEMIC", "CHILIA") ||
-			(StringAt(m_current, 5, "CHEMI", "CHEMO", "CHEMU", "CHEMY", "CHOND", "CHONA", "CHONI", "CHOIR", "CHASM",
+		if (StringAt(0, "CHAMOM", "CHARAC", "CHARIS", "CHARTO", "CHARTU", "CHARYB", "CHRIST", "CHEMIC", "CHILIA") ||
+			(StringAt(0, "CHEMI", "CHEMO", "CHEMU", "CHEMY", "CHOND", "CHONA", "CHONI", "CHOIR", "CHASM",
 				"CHARO", "CHROM", "CHROI", "CHAMA", "CHALC", "CHALD", "CHAET", "CHIRO", "CHILO", "CHELA", "CHOUS",
 				"CHEIL", "CHEIR", "CHEIM", "CHITI", "CHEOP") &&
-				!(StringAt(m_current, 6, "CHEMIN") || StringAt((m_current-2), 8, "ANCHONDO"))) ||
-			(StringAt(m_current, 5, "CHISM", "CHELI") &&
+				!(StringAt(0, "CHEMIN") || StringAt(-2, "ANCHONDO"))) ||
+			(StringAt(0, "CHISM", "CHELI") &&
 				// exclude spanish "machismo"
-				!(StringAt(0, 8, "MACHISMO") ||
+				!(StringAtStart("MACHISMO") ||
 					// exclude some french words
-					StringAt(0, 10, "REVANCHISM") ||
-					StringAt(0, 9, "RICHELIEU") ||
-					(StringAt(0, 5, "CHISM") && (m_length == 5)) ||
-					StringAt(0, 6, "MICHEL"))) ||
+					StringAtStart("REVANCHISM") ||
+					StringAtStart("RICHELIEU") ||
+					(StringAtStart("CHISM") && (m_length == 5)) ||
+					StringAtStart("MICHEL"))) ||
 			// include e.g. "chorus", "chyme", "chaos"
-			(StringAt(m_current, 4, "CHOR", "CHOL", "CHYM", "CHYL", "CHLO", "CHOS", "CHUS", "CHOE") &&
-				!StringAt(0, 6, "CHOLLO", "CHOLLA", "CHORIZ")) ||
+			(StringAt(0, "CHOR", "CHOL", "CHYM", "CHYL", "CHLO", "CHOS", "CHUS", "CHOE") &&
+				!StringAtStart("CHOLLO", "CHOLLA", "CHORIZ")) ||
 			// "chaos" => K but not "chao"
-			(StringAt(m_current, 4, "CHAO") && ((m_current + 3) != m_last)) ||
+			(StringAt(0, "CHAO") && ((m_current + 3) != m_last)) ||
 			// e.g. "abranchiate"
-			(StringAt(m_current, 4, "CHIA") && !(StringAt(0, 10, "APPALACHIA") || StringAt(0, 7, "CHIAPAS"))) ||
+			(StringAt(0, "CHIA") && !(StringAtStart("APPALACHIA") || StringAtStart("CHIAPAS"))) ||
 			// e.g. "chimera"
-			StringAt(m_current, 7, "CHIMERA", "CHIMAER", "CHIMERI") ||
+			StringAt(0, "CHIMERA", "CHIMAER", "CHIMERI") ||
 			// e.g. "chameleon"
-			((m_current == 0) && StringAt(m_current, 5, "CHAME", "CHELO", "CHITO")) ||
+			((m_current == 0) && StringAt(0, "CHAME", "CHELO", "CHITO")) ||
 			// e.g. "spirochete"
-			((((m_current + 4) == m_last) || ((m_current + 5) == m_last)) && StringAt((m_current-1), 6, "OCHETE"))) &&
+			((((m_current + 4) == m_last) || ((m_current + 5) == m_last)) && StringAt(-1, "OCHETE"))) &&
 			// more exceptions where "-CH-" => X e.g. "chortle", "crocheter"
-			!((StringAt(0, 5, "CHORE", "CHOLO", "CHOLA") && (m_length == 5)) ||
-				StringAt(m_current, 5, "CHORT", "CHOSE") ||
-				StringAt((m_current-3), 7, "CROCHET") ||
-				StringAt(0, 7, "CHEMISE", "CHARISE", "CHARISS", "CHAROLE")) {
+			!((StringAtStart("CHORE", "CHOLO", "CHOLA") && (m_length == 5)) ||
+				StringAt(0, "CHORT", "CHOSE") ||
+				StringAt(-3, "CROCHET") ||
+				StringAtStart("CHEMISE", "CHARISE", "CHARISS", "CHAROLE")) {
 			// "CHR/L-" e.g. 'christ', 'chlorine' do not get
 			// alt pronunciation of 'X'
-			if StringAt((m_current + 2), 1, "R", "L") {
+			if StringAt(+2, "R", "L") {
 				MetaphAdd("K")
 			} else {
 				MetaphAdd("K", "X")
@@ -1204,37 +1239,37 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 */
 	Encode_Greek_CH_Non_Initial := func() bool {
 		//greek & other roots e.g. 'tachometer', 'orchid', ch in middle or end of root
-		if StringAt((m_current-2), 6, "ORCHID", "NICHOL", "MECHAN", "LICHEN", "MACHIC", "PACHEL", "RACHIF", "RACHID",
+		if StringAt(-2, "ORCHID", "NICHOL", "MECHAN", "LICHEN", "MACHIC", "PACHEL", "RACHIF", "RACHID",
 			"RACHIS", "RACHIC", "MICHAL") ||
-			StringAt((m_current-3), 5, "MELCH", "GLOCH", "TRACH", "TROCH", "BRACH", "SYNCH", "PSYCH",
+			StringAt(-3, "MELCH", "GLOCH", "TRACH", "TROCH", "BRACH", "SYNCH", "PSYCH",
 				"STICH", "PULCH", "EPOCH") ||
-			(StringAt((m_current-3), 5, "TRICH") && !StringAt((m_current-5), 7, "OSTRICH")) ||
-			(StringAt((m_current-2), 4, "TYCH", "TOCH", "BUCH", "MOCH", "CICH", "DICH", "NUCH", "EICH", "LOCH",
+			(StringAt(-3, "TRICH") && !StringAt(-5, "OSTRICH")) ||
+			(StringAt(-2, "TYCH", "TOCH", "BUCH", "MOCH", "CICH", "DICH", "NUCH", "EICH", "LOCH",
 				"DOCH", "ZECH", "WYCH") &&
-				!(StringAt((m_current-4), 9, "INDOCHINA") || StringAt((m_current-2), 6, "BUCHON"))) ||
-			StringAt((m_current-2), 5, "LYCHN", "TACHO", "ORCHO", "ORCHI", "LICHO") ||
-			(StringAt((m_current-1), 5, "OCHER", "ECHIN", "ECHID") && ((m_current == 1) || (m_current == 2))) ||
-			StringAt((m_current-4), 6, "BRONCH", "STOICH", "STRYCH", "TELECH", "PLANCH", "CATECH", "MANICH", "MALACH",
+				!(StringAt(-4, "INDOCHINA") || StringAt(-2, "BUCHON"))) ||
+			StringAt(-2, "LYCHN", "TACHO", "ORCHO", "ORCHI", "LICHO") ||
+			(StringAt(-1, "OCHER", "ECHIN", "ECHID") && ((m_current == 1) || (m_current == 2))) ||
+			StringAt(-4, "BRONCH", "STOICH", "STRYCH", "TELECH", "PLANCH", "CATECH", "MANICH", "MALACH",
 				"BIANCH", "DIDACH") ||
-			(StringAt((m_current-1), 4, "ICHA", "ICHN", "") && (m_current == 1)) ||
-			StringAt((m_current-2), 8, "ORCHESTR") ||
-			StringAt((m_current-4), 8, "BRANCHIO", "BRANCHIF") ||
-			(StringAt((m_current-1), 5, "ACHAB", "ACHAD", "ACHAN", "ACHAZ") &&
-				!StringAt((m_current-2), 7, "MACHADO", "LACHANC")) ||
-			StringAt((m_current-1), 6, "ACHISH", "ACHILL", "ACHAIA", "ACHENE") ||
-			StringAt((m_current-1), 7, "ACHAIAN", "ACHATES", "ACHIRAL", "ACHERON") ||
-			StringAt((m_current-1), 8, "ACHILLEA", "ACHIMAAS", "ACHILARY", "ACHELOUS", "ACHENIAL", "ACHERNAR") ||
-			StringAt((m_current-1), 9, "ACHALASIA", "ACHILLEAN", "ACHIMENES") ||
-			StringAt((m_current-1), 10, "ACHIMELECH", "ACHITOPHEL") ||
+			(StringAt(-1, "ICHA", "ICHN") && (m_current == 1)) ||
+			StringAt(-2, "ORCHESTR") ||
+			StringAt(-4, "BRANCHIO", "BRANCHIF") ||
+			(StringAt(-1, "ACHAB", "ACHAD", "ACHAN", "ACHAZ") &&
+				!StringAt(-2, "MACHADO", "LACHANC")) ||
+			StringAt(-1, "ACHISH", "ACHILL", "ACHAIA", "ACHENE") ||
+			StringAt(-1, "ACHAIAN", "ACHATES", "ACHIRAL", "ACHERON") ||
+			StringAt(-1, "ACHILLEA", "ACHIMAAS", "ACHILARY", "ACHELOUS", "ACHENIAL", "ACHERNAR") ||
+			StringAt(-1, "ACHALASIA", "ACHILLEAN", "ACHIMENES") ||
+			StringAt(-1, "ACHIMELECH", "ACHITOPHEL") ||
 			// e.g. 'inchoate'
-			(((m_current - 2) == 0) && (StringAt((m_current-2), 6, "INCHOA") ||
+			(((m_current - 2) == 0) && (StringAt(-2, "INCHOA") ||
 				// e.g. 'ischemia'
-				StringAt(0, 4, "ISCH"))) ||
+				StringAtStart("ISCH"))) ||
 			// e.g. 'ablimelech', 'antioch', 'pentateuch'
-			(((m_current + 1) == m_last) && StringAt((m_current-1), 1, "A", "O", "U", "E") &&
-				!(StringAt(0, 7, "DEBAUCH") ||
-					StringAt((m_current-2), 4, "MUCH", "SUCH", "KOCH") ||
-					StringAt((m_current-5), 7, "OODRICH", "ALDRICH"))) {
+			(((m_current + 1) == m_last) && StringAt(-1, "A", "O", "U", "E") &&
+				!(StringAtStart("DEBAUCH") ||
+					StringAt(-2, "MUCH", "SUCH", "KOCH") ||
+					StringAt(-5, "OODRICH", "ALDRICH"))) {
 			MetaphAdd("K", "X")
 			m_current += 2
 			return true
@@ -1250,7 +1285,7 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 *
 	 */
 	Encode_CH := func() bool {
-		if StringAt(m_current, 2, "CH") {
+		if StringAt(0, "CH") {
 			if Encode_CHAE() ||
 				Encode_CH_To_H() ||
 				Encode_Silent_CH() ||
@@ -1267,7 +1302,7 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 			}
 
 			if m_current > 0 {
-				if StringAt(0, 2, "MC") && (m_current == 1) {
+				if StringAtStart("MC") && (m_current == 1) {
 					//e.g., "McHugh"
 					MetaphAdd("K")
 				} else {
@@ -1291,7 +1326,7 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 */
 	Encode_CCIA := func() bool {
 		//e.g., 'focaccia'
-		if StringAt((m_current + 1), 3, "CIA") {
+		if StringAt(+1, "CIA") {
 			MetaphAdd("X", "S")
 			m_current += 2
 			return true
@@ -1308,28 +1343,28 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 */
 	Encode_CC := func() bool {
 		//double 'C', but not if e.g. 'McClellan'
-		if StringAt(m_current, 2, "CC") && !((m_current == 1) && (CharAt(0) == 'M')) {
+		if StringAt(0, "CC") && !((m_current == 1) && (CharAt(0) == 'M')) {
 			// exception
-			if StringAt((m_current - 3), 7, "FLACCID") {
+			if StringAt(-3, "FLACCID") {
 				MetaphAdd("S")
 				AdvanceCounter(3, 2)
 				return true
 			}
 
 			//'bacci', 'bertucci', other italian
-			if (((m_current + 2) == m_last) && StringAt((m_current+2), 1, "I")) ||
-				StringAt((m_current+2), 2, "IO") ||
-				(((m_current + 4) == m_last) && StringAt((m_current+2), 3, "INO", "INI")) {
+			if (((m_current + 2) == m_last) && StringAt(+2, "I")) ||
+				StringAt(+2, "IO") ||
+				(((m_current + 4) == m_last) && StringAt(+2, "INO", "INI")) {
 				MetaphAdd("X")
 				AdvanceCounter(3, 2)
 				return true
 			}
 
 			//'accident', 'accede' 'succeed'
-			if StringAt((m_current+2), 1, "I", "E", "Y") &&
+			if StringAt(+2, "I", "E", "Y") &&
 				//except 'bellocchio','bacchus', 'soccer' get K
 				!((CharAt(m_current+2) == 'H') ||
-					StringAt((m_current-2), 6, "SOCCER")) {
+					StringAt(-2, "SOCCER")) {
 				MetaphAdd("KS")
 				AdvanceCounter(3, 2)
 				return true
@@ -1352,9 +1387,9 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 *
 	 */
 	Encode_CK_CG_CQ := func() bool {
-		if StringAt(m_current, 2, "CK", "CG", "CQ") {
+		if StringAt(0, "CK", "CG", "CQ") {
 			// eastern european spelling e.g. 'gorecki' == 'goresky'
-			if StringAt(m_current, 3, "CKI", "CKY") &&
+			if StringAt(0, "CKI", "CKY") &&
 				((m_current + 2) == m_last) &&
 				(m_length > 6) {
 				MetaphAdd("K", "SK")
@@ -1363,7 +1398,7 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 			}
 			m_current += 2
 
-			if StringAt(m_current, 1, "K", "G", "Q") {
+			if StringAt(0, "K", "G", "Q") {
 				m_current++
 			}
 			return true
@@ -1379,8 +1414,8 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 */
 	Encode_British_Silent_CE := func() bool {
 		// english place names like e.g.'gloucester' pronounced glo-ster
-		return (StringAt((m_current+1), 5, "ESTER") && ((m_current + 5) == m_last)) ||
-			StringAt((m_current+1), 10, "ESTERSHIRE")
+		return (StringAt(+1, "ESTER") && ((m_current + 5) == m_last)) ||
+			StringAt(+1, "ESTERSHIRE")
 	}
 
 	/**
@@ -1390,18 +1425,18 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 */
 	Encode_CE := func() bool {
 		// 'ocean', 'commercial', 'provincial', 'cello', 'fettucini', 'medici'
-		if (StringAt((m_current+1), 3, "EAN") && IsVowel(m_current-1)) ||
+		if (StringAt(+1, "EAN") && IsVowel(m_current-1)) ||
 			// e.g. 'rosacea'
-			(StringAt((m_current-1), 4, "ACEA") &&
+			(StringAt(-1, "ACEA") &&
 				((m_current + 2) == m_last) &&
-				!StringAt(0, 7, "PANACEA")) ||
+				!StringAtStart("PANACEA")) ||
 			// e.g. 'botticelli', 'concerto'
-			StringAt((m_current+1), 4, "ELLI", "ERTO", "EORL") ||
+			StringAt(+1, "ELLI", "ERTO", "EORL") ||
 			// some italian names familiar to americans
-			(StringAt((m_current-3), 5, "CROCE") && ((m_current + 1) == m_last)) ||
-			StringAt((m_current-3), 5, "DOLCE") ||
+			(StringAt(-3, "CROCE") && ((m_current + 1) == m_last)) ||
+			StringAt(-3, "DOLCE") ||
 			// e.g. 'cello'
-			(StringAt((m_current+1), 4, "ELLO") &&
+			(StringAt(+1, "ELLO") &&
 				((m_current + 4) == m_last)) {
 			MetaphAdd("X", "S")
 			return true
@@ -1418,48 +1453,48 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	Encode_CI := func() bool {
 		// with consonant before C
 		// e.g. 'fettucini', but exception for the americanized pronunciation of 'mancini'
-		if ((StringAt((m_current+1), 3, "INI") && !StringAt(0, 7, "MANCINI")) && ((m_current + 3) == m_last)) ||
+		if ((StringAt(+1, "INI") && !StringAtStart("MANCINI")) && ((m_current + 3) == m_last)) ||
 			// e.g. 'medici'
-			(StringAt((m_current-1), 3, "ICI") && ((m_current + 1) == m_last)) ||
+			(StringAt(-1, "ICI") && ((m_current + 1) == m_last)) ||
 			// e.g. "commercial', 'provincial', 'cistercian'
-			StringAt((m_current-1), 5, "RCIAL", "NCIAL", "RCIAN", "UCIUS") ||
+			StringAt(-1, "RCIAL", "NCIAL", "RCIAN", "UCIUS") ||
 			// special cases
-			StringAt((m_current-3), 6, "MARCIA") ||
-			StringAt((m_current-2), 7, "ANCIENT") {
+			StringAt(-3, "MARCIA") ||
+			StringAt(-2, "ANCIENT") {
 			MetaphAdd("X", "S")
 			return true
 		}
 
 		// with vowel before C (or at beginning?)
-		if ((StringAt(m_current, 3, "CIO", "CIE", "CIA") &&
+		if ((StringAt(0, "CIO", "CIE", "CIA") &&
 			IsVowel(m_current-1)) ||
 			// e.g. "ciao"
-			StringAt((m_current+1), 3, "IAO")) &&
-			!StringAt((m_current-4), 8, "COERCION") {
-			if (StringAt(m_current, 4, "CIAN", "CIAL", "CIAO", "CIES", "CIOL", "CION") ||
+			StringAt(+1, "IAO")) &&
+			!StringAt(-4, "COERCION") {
+			if (StringAt(0, "CIAN", "CIAL", "CIAO", "CIES", "CIOL", "CION") ||
 				// exception - "glacier" => 'X' but "spacier" = > 'S'
-				StringAt((m_current-3), 7, "GLACIER") ||
-				StringAt(m_current, 5, "CIENT", "CIENC", "CIOUS", "CIATE", "CIATI", "CIATO", "CIABL", "CIARY") ||
-				(((m_current + 2) == m_last) && StringAt(m_current, 3, "CIA", "CIO")) ||
-				(((m_current + 3) == m_last) && StringAt(m_current, 4, "CIAS", "CIOS"))) &&
+				StringAt(-3, "GLACIER") ||
+				StringAt(0, "CIENT", "CIENC", "CIOUS", "CIATE", "CIATI", "CIATO", "CIABL", "CIARY") ||
+				(((m_current + 2) == m_last) && StringAt(0, "CIA", "CIO")) ||
+				(((m_current + 3) == m_last) && StringAt(0, "CIAS", "CIOS"))) &&
 				// exceptions
-				!(StringAt((m_current-4), 11, "ASSOCIATION") ||
-					StringAt(0, 4, "OCIE") ||
+				!(StringAt(-4, "ASSOCIATION") ||
+					StringAtStart("OCIE") ||
 					// exceptions mostly because these names are usually from
 					// the spanish rather than the italian in america
-					StringAt((m_current-2), 5, "LUCIO") ||
-					StringAt((m_current-2), 6, "MACIAS") ||
-					StringAt((m_current-3), 6, "GRACIE", "GRACIA") ||
-					StringAt((m_current-2), 7, "LUCIANO") ||
-					StringAt((m_current-3), 8, "MARCIANO") ||
-					StringAt((m_current-4), 7, "PALACIO") ||
-					StringAt((m_current-4), 9, "FELICIANO") ||
-					StringAt((m_current-5), 8, "MAURICIO") ||
-					StringAt((m_current-7), 11, "ENCARNACION") ||
-					StringAt((m_current-4), 8, "POLICIES") ||
-					StringAt((m_current-2), 8, "HACIENDA") ||
-					StringAt((m_current-6), 9, "ANDALUCIA") ||
-					StringAt((m_current-2), 5, "SOCIO", "SOCIE")) {
+					StringAt(-2, "LUCIO") ||
+					StringAt(-2, "MACIAS") ||
+					StringAt(-3, "GRACIE", "GRACIA") ||
+					StringAt(-2, "LUCIANO") ||
+					StringAt(-3, "MARCIANO") ||
+					StringAt(-4, "PALACIO") ||
+					StringAt(-4, "FELICIANO") ||
+					StringAt(-5, "MAURICIO") ||
+					StringAt(-7, "ENCARNACION") ||
+					StringAt(-4, "POLICIES") ||
+					StringAt(-2, "HACIENDA") ||
+					StringAt(-6, "ANDALUCIA") ||
+					StringAt(-2, "SOCIO", "SOCIE")) {
 				MetaphAdd("X", "S")
 			} else {
 				MetaphAdd("S", "X")
@@ -1469,7 +1504,7 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 		}
 
 		// exception
-		if StringAt((m_current - 4), 8, "COERCION") {
+		if StringAt(-4, "COERCION") {
 			MetaphAdd("J")
 			return true
 		}
@@ -1483,7 +1518,7 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 *
 	 */
 	Encode_Latinate_Suffixes := func() bool {
-		if StringAt((m_current + 1), 4, "EOUS", "IOUS") {
+		if StringAt(+1, "EOUS", "IOUS") {
 			MetaphAdd("X", "S")
 			return true
 		}
@@ -1499,7 +1534,7 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 *
 	 */
 	Encode_C_Front_Vowel := func() bool {
-		if StringAt(m_current, 2, "CI", "CE", "CY") {
+		if StringAt(0, "CI", "CE", "CY") {
 			if Encode_British_Silent_CE() ||
 				Encode_CE() ||
 				Encode_CI() ||
@@ -1523,9 +1558,9 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 *
 	 */
 	Encode_Silent_C := func() bool {
-		if StringAt((m_current + 1), 1, "T", "S") {
-			if StringAt(0, 11, "CONNECTICUT") ||
-				StringAt(0, 6, "INDICT", "TUCSON") {
+		if StringAt(+1, "T", "S") {
+			if StringAtStart("CONNECTICUT") ||
+				StringAtStart("INDICT", "TUCSON") {
 				m_current++
 				return true
 			}
@@ -1542,9 +1577,9 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 *
 	 */
 	Encode_CZ := func() bool {
-		if StringAt((m_current+1), 1, "Z") &&
-			!StringAt((m_current-1), 6, "ECZEMA") {
-			if StringAt(m_current, 4, "CZAR") {
+		if StringAt(+1, "Z") &&
+			!StringAt(-1, "ECZEMA") {
+			if StringAt(0, "CZAR") {
 				MetaphAdd("S")
 			} else {
 				// otherwise most likely a czech word...
@@ -1567,15 +1602,15 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 		// give an 'etymological' 2nd
 		// encoding for "kovacs" so
 		// that it matches "kovach"
-		if StringAt(0, 6, "KOVACS") {
+		if StringAtStart("KOVACS") {
 			MetaphAdd("KS", "X")
 			m_current += 2
 			return true
 		}
 
-		if StringAt((m_current-1), 3, "ACS") &&
+		if StringAt(-1, "ACS") &&
 			((m_current + 1) == m_last) &&
-			!StringAt((m_current-4), 6, "ISAACS") {
+			!StringAt(-4, "ISAACS") {
 			MetaphAdd("X")
 			m_current += 2
 			return true
@@ -1604,20 +1639,20 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 		}
 
 		//else
-		if !StringAt((m_current - 1), 1, "C", "K", "G", "Q") {
+		if !StringAt(-1, "C", "K", "G", "Q") {
 			MetaphAdd("K")
 		}
 
 		//name sent in 'mac caffrey', 'mac gregor
-		if StringAt((m_current + 1), 2, " C", " Q", " G") {
+		if StringAt(+1, " C", " Q", " G") {
 			m_current += 2
 		} else {
-			if StringAt((m_current+1), 1, "C", "K", "Q") &&
-				!StringAt((m_current+1), 2, "CE", "CI") {
+			if StringAt(+1, "C", "K", "Q") &&
+				!StringAt(+1, "CE", "CI") {
 				m_current += 2
 				// account for combinations such as Ro-ckc-liffe
-				if StringAt((m_current), 1, "C", "K", "Q") &&
-					!StringAt((m_current+1), 2, "CE", "CI") {
+				if StringAt(0, "C", "K", "Q") &&
+					!StringAt(+1, "CE", "CI") {
 					m_current++
 				}
 			} else {
@@ -1633,19 +1668,19 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 *
 	 */
 	Encode_DG := func() bool {
-		if StringAt(m_current, 2, "DG") {
+		if StringAt(0, "DG") {
 			// excludes exceptions e.g. 'edgar',
 			// or cases where 'g' is first letter of combining form
 			// e.g. 'handgun', 'waldglas'
-			if StringAt((m_current+2), 1, "A", "O") ||
+			if StringAt(+2, "A", "O") ||
 				// e.g. "midgut"
-				StringAt((m_current+1), 3, "GUN", "GUT") ||
+				StringAt(+1, "GUN", "GUT") ||
 				// e.g. "handgrip"
-				StringAt((m_current+1), 4, "GEAR", "GLAS", "GRIP", "GREN", "GILL", "GRAF") ||
+				StringAt(+1, "GEAR", "GLAS", "GRIP", "GREN", "GILL", "GRAF") ||
 				// e.g. "mudgard"
-				StringAt((m_current+1), 5, "GUARD", "GUILT", "GRAVE", "GRASS") ||
+				StringAt(+1, "GUARD", "GUILT", "GRAVE", "GRASS") ||
 				// e.g. "woodgrouse"
-				StringAt((m_current+1), 6, "GROUSE") {
+				StringAt(+1, "GROUSE") {
 				MetaphAddExactApprox("DG", "TK")
 			} else {
 				//e.g. "edge", "abridgment"
@@ -1666,7 +1701,7 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 */
 	Encode_DJ := func() bool {
 		// e.g. "adjacent"
-		if StringAt(m_current, 2, "DJ") {
+		if StringAt(0, "DJ") {
 			MetaphAdd("J")
 			m_current += 2
 			return true
@@ -1683,14 +1718,14 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 */
 	Encode_DT_DD := func() bool {
 		// eat redundant 'T' or 'D'
-		if StringAt(m_current, 2, "DT", "DD") {
-			if StringAt(m_current, 3, "DTH", "") {
+		if StringAt(0, "DT", "DD") {
+			if StringAt(0, "DTH") {
 				MetaphAddExactApprox("D0", "T0")
 				m_current += 3
 			} else {
 				if m_encodeExact {
 					// devoice it
-					if StringAt(m_current, 2, "DT") {
+					if StringAt(0, "DT") {
 						MetaphAdd("T")
 					} else {
 						MetaphAdd("D")
@@ -1714,16 +1749,16 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 */
 	Encode_D_To_J := func() bool {
 		// e.g. "module", "adulate"
-		if (StringAt(m_current, 3, "DUL") &&
+		if (StringAt(0, "DUL") &&
 			(IsVowel(m_current-1) && IsVowel(m_current+3))) ||
 			// e.g. "soldier", "grandeur", "procedure"
 			(((m_current + 3) == m_last) &&
-				StringAt((m_current-1), 5, "LDIER", "NDEUR", "EDURE", "RDURE")) ||
-			StringAt((m_current-3), 7, "CORDIAL") ||
+				StringAt(-1, "LDIER", "NDEUR", "EDURE", "RDURE")) ||
+			StringAt(-3, "CORDIAL") ||
 			// e.g.  "pendulum", "education"
-			StringAt((m_current-1), 5, "NDULA", "NDULU", "EDUCA") ||
+			StringAt(-1, "NDULA", "NDULU", "EDUCA") ||
 			// e.g. "individual", "individual", "residuum"
-			StringAt((m_current-1), 4, "ADUA", "IDUA", "IDUU") {
+			StringAt(-1, "ADUA", "IDUA", "IDUU") {
 			MetaphAddExactApprox("J", "D", "J", "T")
 			AdvanceCounter(2, 1)
 			return true
@@ -1740,7 +1775,7 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 */
 	Encode_DOUS := func() bool {
 		// e.g. "assiduous", "arduous"
-		if StringAt((m_current + 1), 4, "UOUS") {
+		if StringAt(+1, "UOUS") {
 			MetaphAddExactApprox("J", "D", "J", "T")
 			AdvanceCounter(4, 1)
 			return true
@@ -1757,11 +1792,11 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 */
 	Encode_Silent_D := func() bool {
 		// silent 'D' e.g. 'wednesday', 'handsome'
-		if StringAt((m_current-2), 9, "WEDNESDAY") ||
-			StringAt((m_current-3), 7, "HANDKER", "HANDSOM", "WINDSOR") ||
+		if StringAt(-2, "WEDNESDAY") ||
+			StringAt(-3, "HANDKER", "HANDSOM", "WINDSOR") ||
 			// french silent D at end in words or names familiar to americans
-			StringAt((m_current-5), 6, "PERNOD", "ARTAUD", "RENAUD") ||
-			StringAt((m_current-6), 7, "RIMBAUD", "MICHAUD", "BICHAUD") {
+			StringAt(-5, "PERNOD", "ARTAUD", "RENAUD") ||
+			StringAt(-6, "RIMBAUD", "MICHAUD", "BICHAUD") {
 			m_current++
 			return true
 		}
@@ -1787,7 +1822,7 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 			// "final de-voicing" in this case
 			// e.g. 'missed' == 'mist'
 			if (m_current == m_last) &&
-				StringAt((m_current-3), 4, "SSED") {
+				StringAt(-3, "SSED") {
 				MetaphAdd("T")
 			} else {
 				MetaphAdd("D")
@@ -1806,7 +1841,7 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 		// Encode cases where "-FT-" => "T" is usually silent
 		// e.g. 'often', 'soften'
 		// This should really be covered under "T"!
-		if StringAt((m_current - 1), 5, "OFTEN") {
+		if StringAt(-1, "OFTEN") {
 			MetaphAdd("F", "FT")
 			m_current += 2
 			return
@@ -1832,7 +1867,7 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	Encode_Silent_G_At_Beginning := func() bool {
 		//skip these when at start of word
 		if (m_current == 0) &&
-			StringAt(m_current, 2, "GN") {
+			StringAt(0, "GN") {
 			m_current += 1
 			return true
 		}
@@ -1849,13 +1884,13 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	Encode_GG := func() bool {
 		if CharAt(m_current+1) == 'G' {
 			// italian e.g, 'loggia', 'caraveggio', also 'suggest' and 'exaggerate'
-			if StringAt((m_current-1), 5, "AGGIA", "OGGIA", "AGGIO", "EGGIO", "EGGIA", "IGGIO") ||
+			if StringAt(-1, "AGGIA", "OGGIA", "AGGIO", "EGGIO", "EGGIA", "IGGIO") ||
 				// 'ruggiero' but not 'snuggies'
-				(StringAt((m_current-1), 5, "UGGIE") && !(((m_current + 3) == m_last) || ((m_current + 4) == m_last))) ||
-				(((m_current + 2) == m_last) && StringAt((m_current-1), 4, "AGGI", "OGGI")) ||
-				StringAt((m_current-2), 6, "SUGGES", "XAGGER", "REGGIE") {
+				(StringAt(-1, "UGGIE") && !(((m_current + 3) == m_last) || ((m_current + 4) == m_last))) ||
+				(((m_current + 2) == m_last) && StringAt(-1, "AGGI", "OGGI")) ||
+				StringAt(-2, "SUGGES", "XAGGER", "REGGIE") {
 				// expection where "-GG-" => KJ
-				if StringAt((m_current - 2), 7, "SUGGEST") {
+				if StringAt(-2, "SUGGEST") {
 					MetaphAddExactApprox("G", "K")
 				}
 
@@ -1898,7 +1933,7 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 		if (m_current > 0) &&
 			!IsVowel(m_current-1) &&
 			// not e.g. 'greenhalgh'
-			!(StringAt((m_current-3), 5, "HALGH") &&
+			!(StringAt(-3, "HALGH") &&
 				((m_current + 1) == m_last)) {
 			MetaphAddExactApprox("G", "K")
 			m_current += 2
@@ -1937,7 +1972,7 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 */
 	Encode_GH_To_J := func() bool {
 		// e.g., 'greenhalgh', 'dunkenhalgh', english names
-		if StringAt((m_current-2), 4, "ALGH") && ((m_current + 1) == m_last) {
+		if StringAt(-2, "ALGH") && ((m_current + 1) == m_last) {
 			MetaphAdd("J", "")
 			m_current += 2
 			return true
@@ -1954,8 +1989,8 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	Encode_GH_To_H := func() bool {
 		// special cases
 		// e.g., 'donoghue', 'donaghy'
-		if (StringAt((m_current-4), 4, "DONO", "DONA") && IsVowel(m_current+2)) ||
-			StringAt((m_current-5), 9, "CALLAGHAN") {
+		if (StringAt(-4, "DONO", "DONA") && IsVowel(m_current+2)) ||
+			StringAt(-5, "CALLAGHAN") {
 			MetaphAdd("H")
 			m_current += 2
 			return true
@@ -1971,11 +2006,11 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 */
 	Encode_UGHT := func() bool {
 		//e.g. "ought", "aught", "daughter", "slaughter"
-		if StringAt((m_current - 1), 4, "UGHT") {
-			if (StringAt((m_current-3), 5, "LAUGH") &&
-				!(StringAt((m_current-4), 7, "SLAUGHT") ||
-					StringAt((m_current-3), 7, "LAUGHTO"))) ||
-				StringAt((m_current-4), 6, "DRAUGH") {
+		if StringAt(-1, "UGHT") {
+			if (StringAt(-3, "LAUGH") &&
+				!(StringAt(-4, "SLAUGHT") ||
+					StringAt(-3, "LAUGHTO"))) ||
+				StringAt(-4, "DRAUGH") {
 				MetaphAdd("FT")
 			} else {
 				MetaphAdd("T")
@@ -1994,7 +2029,7 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 */
 	Encode_GH_H_Part_Of_Other_Word := func() bool {
 		// if the 'H' is the beginning of another word or syllable
-		if StringAt((m_current + 1), 4, "HOUS", "HEAD", "HOLE", "HORN", "HARN") {
+		if StringAt(+1, "HOUS", "HEAD", "HOLE", "HORN", "HARN") {
 			MetaphAddExactApprox("G", "K")
 			m_current += 2
 			return true
@@ -2010,47 +2045,47 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 */
 	Encode_Silent_GH := func() bool {
 		//Parker's rule (with some further refinements) - e.g., 'hugh'
-		if ((((m_current > 1) && StringAt((m_current-2), 1, "B", "H", "D", "G", "L")) ||
+		if ((((m_current > 1) && StringAt(-2, "B", "H", "D", "G", "L")) ||
 			//e.g., 'bough'
 			((m_current > 2) &&
-				StringAt((m_current-3), 1, "B", "H", "D", "K", "W", "N", "P", "V") &&
-				!StringAt(0, 6, "ENOUGH")) ||
+				StringAt(-3, "B", "H", "D", "K", "W", "N", "P", "V") &&
+				!StringAtStart("ENOUGH")) ||
 			//e.g., 'broughton'
-			((m_current > 3) && StringAt((m_current-4), 1, "B", "H")) ||
+			((m_current > 3) && StringAt(-4, "B", "H")) ||
 			//'plough', 'slaugh'
-			((m_current > 3) && StringAt((m_current-4), 2, "PL", "SL")) ||
+			((m_current > 3) && StringAt(-4, "PL", "SL")) ||
 			((m_current > 0) &&
 				// 'sigh', 'light'
 				((CharAt(m_current-1) == 'I') ||
-					StringAt(0, 4, "PUGH") ||
+					StringAtStart("PUGH") ||
 					// e.g. 'MCDONAGH', 'MURTAGH', 'CREAGH'
-					(StringAt((m_current-1), 3, "AGH") &&
+					(StringAt(-1, "AGH") &&
 						((m_current + 1) == m_last)) ||
-					StringAt((m_current-4), 6, "GERAGH", "DRAUGH") ||
-					(StringAt((m_current-3), 5, "GAUGH", "GEOGH", "MAUGH") &&
-						!StringAt(0, 9, "MCGAUGHEY")) ||
+					StringAt(-4, "GERAGH", "DRAUGH") ||
+					(StringAt(-3, "GAUGH", "GEOGH", "MAUGH") &&
+						!StringAtStart("MCGAUGHEY")) ||
 					// exceptions to 'tough', 'rough', 'lough'
-					(StringAt((m_current-2), 4, "OUGH") &&
+					(StringAt(-2, "OUGH") &&
 						(m_current > 3) &&
-						!StringAt((m_current-4), 6, "CCOUGH", "ENOUGH", "TROUGH", "CLOUGH"))))) &&
+						!StringAt(-4, "CCOUGH", "ENOUGH", "TROUGH", "CLOUGH"))))) &&
 			// suffixes starting w/ vowel where "-GH-" is usually silent
-			(StringAt((m_current-3), 5, "VAUGH", "FEIGH", "LEIGH") ||
-				StringAt((m_current-2), 4, "HIGH", "TIGH") ||
+			(StringAt(-3, "VAUGH", "FEIGH", "LEIGH") ||
+				StringAt(-2, "HIGH", "TIGH") ||
 				((m_current + 1) == m_last) ||
-				(StringAt((m_current+2), 2, "IE", "EY", "ES", "ER", "ED", "TY") &&
+				(StringAt(+2, "IE", "EY", "ES", "ER", "ED", "TY") &&
 					((m_current + 3) == m_last) &&
-					!StringAt((m_current-5), 9, "GALLAGHER")) ||
-				(StringAt((m_current+2), 1, "Y") && ((m_current + 2) == m_last)) ||
-				(StringAt((m_current+2), 3, "ING", "OUT") && ((m_current + 4) == m_last)) ||
-				(StringAt((m_current+2), 4, "ERTY") && ((m_current + 5) == m_last)) ||
+					!StringAt(-5, "GALLAGHER")) ||
+				(StringAt(+2, "Y") && ((m_current + 2) == m_last)) ||
+				(StringAt(+2, "ING", "OUT") && ((m_current + 4) == m_last)) ||
+				(StringAt(+2, "ERTY") && ((m_current + 5) == m_last)) ||
 				(!IsVowel(m_current+2) ||
-					StringAt((m_current-3), 5, "GAUGH", "GEOGH", "MAUGH") ||
-					StringAt((m_current-4), 8, "BROUGHAM")))) &&
+					StringAt(-3, "GAUGH", "GEOGH", "MAUGH") ||
+					StringAt(-4, "BROUGHAM")))) &&
 			// exceptions where '-g-' pronounced
-			!(StringAt(0, 6, "BALOGH", "SABAGH") ||
-				StringAt((m_current-2), 7, "BAGHDAD") ||
-				StringAt((m_current-3), 5, "WHIGH") ||
-				StringAt((m_current-5), 7, "SABBAGH", "AKHLAGH")) {
+			!(StringAtStart("BALOGH", "SABAGH") ||
+				StringAt(-2, "BAGHDAD") ||
+				StringAt(-3, "WHIGH") ||
+				StringAt(-5, "SABBAGH", "AKHLAGH")) {
 			// silent - do nothing
 			m_current += 2
 			return true
@@ -2068,23 +2103,23 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 		var handled = false
 
 		// special case: 'hiccough' == 'hiccup'
-		if StringAt((m_current - 6), 8, "HICCOUGH") {
+		if StringAt(-6, "HICCOUGH") {
 			MetaphAdd("P")
 			handled = true
-		} else if StringAt(0, 5, "LOUGH") {
+		} else if StringAtStart("LOUGH") {
 			// special case: 'lough' alt spelling for scots 'loch'
 			MetaphAdd("K")
 			handled = true
-		} else if StringAt(0, 6, "BALOGH") {
+		} else if StringAtStart("BALOGH") {
 			// hungarian
 			MetaphAddExactApprox("G", "", "K", "")
 			handled = true
-		} else if StringAt((m_current - 3), 8, "LAUGHLIN", "COUGHLAN", "LOUGHLIN") {
+		} else if StringAt(-3, "LAUGHLIN", "COUGHLAN", "LOUGHLIN") {
 			// "maclaughlin"
 			MetaphAdd("K", "F")
 			handled = true
-		} else if StringAt((m_current-3), 5, "GOUGH") ||
-			StringAt((m_current-7), 9, "COLCLOUGH") {
+		} else if StringAt(-3, "GOUGH") ||
+			StringAt(-7, "COLCLOUGH") {
 			MetaphAdd("", "F")
 			handled = true
 		}
@@ -2112,8 +2147,8 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 			if (m_current > 2) &&
 				(CharAt(m_current-1) == 'U') &&
 				IsVowel(m_current-2) &&
-				StringAt((m_current-3), 1, "C", "G", "L", "R", "T", "N", "S") &&
-				!StringAt((m_current-4), 8, "BREUGHEL", "FLAUGHER") {
+				StringAt(-3, "C", "G", "L", "R", "T", "N", "S") &&
+				!StringAt(-4, "BREUGHEL", "FLAUGHER") {
 				MetaphAdd("F")
 				m_current += 2
 				return true
@@ -2159,15 +2194,15 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	Encode_Silent_G := func() bool {
 		// e.g. "phlegm", "apothegm", "voigt"
 		if (((m_current + 1) == m_last) &&
-			(StringAt((m_current-1), 3, "EGM", "IGM", "AGM") ||
-				StringAt(m_current, 2, "GT"))) ||
-			(StringAt(0, 5, "HUGES") && (m_length == 5)) {
+			(StringAt(-1, "EGM", "IGM", "AGM") ||
+				StringAt(0, "GT"))) ||
+			(StringAtStart("HUGES") && (m_length == 5)) {
 			m_current++
 			return true
 		}
 
 		// vietnamese names e.g. "Nguyen" but not "Ng"
-		if StringAt(0, 2, "NG") && (m_current != m_last) {
+		if StringAtStart("NG") && (m_current != m_last) {
 			m_current++
 			return true
 		}
@@ -2186,33 +2221,33 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 			// 'align' 'sign', 'resign' but not 'resignation'
 			// also 'impugn', 'impugnable', but not 'repugnant'
 			if ((m_current > 1) &&
-				((StringAt((m_current-1), 1, "I", "U", "E") ||
-					StringAt((m_current-3), 9, "LORGNETTE") ||
-					StringAt((m_current-2), 9, "LAGNIAPPE") ||
-					StringAt((m_current-2), 6, "COGNAC") ||
-					StringAt((m_current-3), 7, "CHAGNON") ||
-					StringAt((m_current-5), 9, "COMPAGNIE") ||
-					StringAt((m_current-4), 6, "BOLOGN")) &&
+				((StringAt(-1, "I", "U", "E") ||
+					StringAt(-3, "LORGNETTE") ||
+					StringAt(-2, "LAGNIAPPE") ||
+					StringAt(-2, "COGNAC") ||
+					StringAt(-3, "CHAGNON") ||
+					StringAt(-5, "COMPAGNIE") ||
+					StringAt(-4, "BOLOGN")) &&
 					// Exceptions: following are cases where 'G' is pronounced
 					// in "assign" 'g' is silent, but not in "assignation"
-					!(StringAt((m_current+2), 5, "ATION") ||
-						StringAt((m_current+2), 4, "ATOR") ||
-						StringAt((m_current+2), 3, "ATE", "ITY") ||
+					!(StringAt(+2, "ATION") ||
+						StringAt(+2, "ATOR") ||
+						StringAt(+2, "ATE", "ITY") ||
 						// exception to exceptions, not pronounced:
-						(StringAt((m_current+2), 2, "AN", "AC", "IA", "UM") &&
-							!(StringAt((m_current-3), 8, "POIGNANT") ||
-								StringAt((m_current-2), 6, "COGNAC"))) ||
-						StringAt(0, 7, "SPIGNER", "STEGNER") ||
-						(StringAt(0, 5, "SIGNE") && (m_length == 5)) ||
-						StringAt((m_current-2), 5, "LIGNI", "LIGNO", "REGNA", "DIGNI", "WEGNE",
+						(StringAt(+2, "AN", "AC", "IA", "UM") &&
+							!(StringAt(-3, "POIGNANT") ||
+								StringAt(-2, "COGNAC"))) ||
+						StringAtStart("SPIGNER", "STEGNER") ||
+						(StringAtStart("SIGNE") && (m_length == 5)) ||
+						StringAt(-2, "LIGNI", "LIGNO", "REGNA", "DIGNI", "WEGNE",
 							"TIGNE", "RIGNE", "REGNE", "TIGNO") ||
-						StringAt((m_current-2), 6, "SIGNAL", "SIGNIF", "SIGNAT") ||
-						StringAt((m_current-1), 5, "IGNIT")) &&
-					!StringAt((m_current-2), 6, "SIGNET", "LIGNEO"))) ||
+						StringAt(-2, "SIGNAL", "SIGNIF", "SIGNAT") ||
+						StringAt(-1, "IGNIT")) &&
+					!StringAt(-2, "SIGNET", "LIGNEO"))) ||
 				//not e.g. 'cagney', 'magna'
 				(((m_current + 2) == m_last) &&
-					StringAt(m_current, 3, "GNE", "GNA") &&
-					!StringAt((m_current-2), 5, "SIGNA", "MAGNA", "SIGNE")) {
+					StringAt(0, "GNE", "GNA") &&
+					!StringAt(-2, "SIGNA", "MAGNA", "SIGNE")) {
 				MetaphAddExactApprox("N", "GN", "N", "KN")
 			} else {
 				MetaphAddExactApprox("GN", "KN")
@@ -2232,7 +2267,7 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	Encode_GL := func() bool {
 		//'tagliaro', 'puglia' BUT add K in alternative
 		// since americans sometimes do this
-		if StringAt((m_current+1), 3, "LIA", "LIO", "LIE") &&
+		if StringAt(+1, "LIA", "LIO", "LIE") &&
 			IsVowel(m_current-1) {
 			MetaphAddExactApprox("L", "GL", "L", "KL")
 			m_current += 2
@@ -2248,26 +2283,26 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 *
 	 */
 	Initial_G_Soft := func() bool {
-		if ((StringAt((m_current+1), 2, "EL", "EM", "EN", "EO", "ER", "ES", "IA", "IN", "IO", "IP", "IU", "YM", "YN", "YP", "YR", "EE") ||
-			StringAt((m_current+1), 3, "IRA", "IRO")) &&
+		if ((StringAt(+1, "EL", "EM", "EN", "EO", "ER", "ES", "IA", "IN", "IO", "IP", "IU", "YM", "YN", "YP", "YR", "EE") ||
+			StringAt(+1, "IRA", "IRO")) &&
 			// except for smaller set of cases where => K, e.g. "gerber"
-			!(StringAt((m_current+1), 3, "ELD", "ELT", "ERT", "INZ", "ERH", "ITE", "ERD", "ERL", "ERN",
+			!(StringAt(+1, "ELD", "ELT", "ERT", "INZ", "ERH", "ITE", "ERD", "ERL", "ERN",
 				"INT", "EES", "EEK", "ELB", "EER") ||
-				StringAt((m_current+1), 4, "ERSH", "ERST", "INSB", "INGR", "EROW", "ERKE", "EREN") ||
-				StringAt((m_current+1), 5, "ELLER", "ERDIE", "ERBER", "ESUND", "ESNER", "INGKO", "INKGO",
+				StringAt(+1, "ERSH", "ERST", "INSB", "INGR", "EROW", "ERKE", "EREN") ||
+				StringAt(+1, "ELLER", "ERDIE", "ERBER", "ESUND", "ESNER", "INGKO", "INKGO",
 					"IPPER", "ESELL", "IPSON", "EEZER", "ERSON", "ELMAN") ||
-				StringAt((m_current+1), 6, "ESTALT", "ESTAPO", "INGHAM", "ERRITY", "ERRISH", "ESSNER", "ENGLER") ||
-				StringAt((m_current+1), 7, "YNAECOL", "YNECOLO", "ENTHNER", "ERAGHTY") ||
-				StringAt((m_current+1), 8, "INGERICH", "EOGHEGAN"))) ||
+				StringAt(+1, "ESTALT", "ESTAPO", "INGHAM", "ERRITY", "ERRISH", "ESSNER", "ENGLER") ||
+				StringAt(+1, "YNAECOL", "YNECOLO", "ENTHNER", "ERAGHTY") ||
+				StringAt(+1, "INGERICH", "EOGHEGAN"))) ||
 			(IsVowel(m_current+1) &&
-				(StringAt((m_current+1), 3, "EE ", "EEW") ||
-					(StringAt((m_current+1), 3, "IGI", "IRA", "IBE", "AOL", "IDE", "IGL") &&
-						!StringAt((m_current+1), 5, "IDEON")) ||
-					StringAt((m_current+1), 4, "ILES", "INGI", "ISEL") ||
-					(StringAt((m_current+1), 5, "INGER") && !StringAt((m_current+1), 8, "INGERICH")) ||
-					StringAt((m_current+1), 5, "IBBER", "IBBET", "IBLET", "IBRAN", "IGOLO", "IRARD", "IGANT") ||
-					StringAt((m_current+1), 6, "IRAFFE", "EEWHIZ", "") ||
-					StringAt((m_current+1), 7, "ILLETTE", "IBRALTA"))) {
+				(StringAt(+1, "EE ", "EEW") ||
+					(StringAt(+1, "IGI", "IRA", "IBE", "AOL", "IDE", "IGL") &&
+						!StringAt(+1, "IDEON")) ||
+					StringAt(+1, "ILES", "INGI", "ISEL") ||
+					(StringAt(+1, "INGER") && !StringAt(+1, "INGERICH")) ||
+					StringAt(+1, "IBBER", "IBBET", "IBLET", "IBRAN", "IGOLO", "IRARD", "IGANT") ||
+					StringAt(+1, "IRAFFE", "EEWHIZ") ||
+					StringAt(+1, "ILLETTE", "IBRALTA"))) {
 			return true
 		}
 
@@ -2285,7 +2320,7 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 		// 'g' followed by vowel at beginning
 		if (m_current == 0) && Front_Vowel(m_current+1) {
 			// special case "gila" as in "gila monster"
-			if StringAt((m_current+1), 3, "ILA") && (m_length == 4) {
+			if StringAt(+1, "ILA") && (m_length == 4) {
 				MetaphAdd("H")
 			} else if Initial_G_Soft() {
 				MetaphAddExactApprox("J", "G", "J", "K")
@@ -2313,7 +2348,7 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 */
 	Encode_NGER := func() bool {
 		if (m_current > 1) &&
-			StringAt((m_current-1), 4, "NGER") {
+			StringAt(-1, "NGER") {
 			// default 'G' => J  such as 'ranger', 'stranger', 'manger', 'messenger', 'orangery', 'granger'
 			// 'boulanger', 'challenger', 'danger', 'changer', 'harbinger', 'lounger', 'ginger', 'passenger'
 			// except for these the following
@@ -2321,26 +2356,26 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 				RootOrInflections(m_inWord, "LINGER") ||
 				RootOrInflections(m_inWord, "MALINGER") ||
 				RootOrInflections(m_inWord, "FINGER") ||
-				(StringAt((m_current-3), 4, "HUNG", "FING", "BUNG", "WING", "RING", "DING", "ZENG",
+				(StringAt(-3, "HUNG", "FING", "BUNG", "WING", "RING", "DING", "ZENG",
 					"ZING", "JUNG", "LONG", "PING", "CONG", "MONG", "BANG",
 					"GANG", "HANG", "LANG", "SANG", "SING", "WANG", "ZANG") &&
 					// exceptions to above where 'G' => J
-					!(StringAt((m_current-6), 7, "BOULANG", "SLESING", "KISSING", "DERRING") ||
-						StringAt((m_current-8), 9, "SCHLESING") ||
-						StringAt((m_current-5), 6, "SALING", "BELANG") ||
-						StringAt((m_current-6), 7, "BARRING") ||
-						StringAt((m_current-6), 9, "PHALANGER") ||
-						StringAt((m_current-4), 5, "CHANG"))) ||
-				StringAt((m_current-4), 5, "STING", "YOUNG") ||
-				StringAt((m_current-5), 6, "STRONG") ||
-				StringAt(0, 3, "UNG", "ENG", "ING") ||
-				StringAt(m_current, 6, "GERICH") ||
-				StringAt(0, 6, "SENGER") ||
-				StringAt((m_current-3), 6, "WENGER", "MUNGER", "SONGER", "KINGER") ||
-				StringAt((m_current-4), 7, "FLINGER", "SLINGER", "STANGER", "STENGER", "KLINGER", "CLINGER") ||
-				StringAt((m_current-5), 8, "SPRINGER", "SPRENGER") ||
-				StringAt((m_current-3), 7, "LINGERF") ||
-				StringAt((m_current-2), 7, "ANGERLY", "ANGERBO", "INGERSO")) {
+					!(StringAt(-6, "BOULANG", "SLESING", "KISSING", "DERRING") ||
+						StringAt(-8, "SCHLESING") ||
+						StringAt(-5, "SALING", "BELANG") ||
+						StringAt(-6, "BARRING") ||
+						StringAt(-6, "PHALANGER") ||
+						StringAt(-4, "CHANG"))) ||
+				StringAt(-4, "STING", "YOUNG") ||
+				StringAt(-5, "STRONG") ||
+				StringAtStart("UNG", "ENG", "ING") ||
+				StringAt(0, "GERICH") ||
+				StringAtStart("SENGER") ||
+				StringAt(-3, "WENGER", "MUNGER", "SONGER", "KINGER") ||
+				StringAt(-4, "FLINGER", "SLINGER", "STANGER", "STENGER", "KLINGER", "CLINGER") ||
+				StringAt(-5, "SPRINGER", "SPRENGER") ||
+				StringAt(-3, "LINGERF") ||
+				StringAt(-2, "ANGERLY", "ANGERBO", "INGERSO")) {
 				MetaphAddExactApprox("J", "G", "J", "K")
 			} else {
 				MetaphAddExactApprox("G", "J", "K", "J")
@@ -2360,32 +2395,32 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 *
 	 */
 	Encode_GER := func() bool {
-		if (m_current > 0) && StringAt((m_current+1), 2, "ER") {
+		if (m_current > 0) && StringAt(+1, "ER") {
 			// Exceptions to 'GE' where 'G' => K
 			// e.g. "JAGER", "TIGER", "LIGER", "LAGER", "LUGER", "AUGER", "EAGER", "HAGER", "SAGER"
 			if (((m_current == 2) && IsVowel(m_current-1) && !IsVowel(m_current-2) &&
-				!(StringAt((m_current-2), 5, "PAGER", "WAGER", "NIGER", "ROGER", "LEGER", "CAGER")) ||
-				StringAt((m_current-2), 5, "AUGER", "EAGER", "INGER", "YAGER")) ||
-				StringAt((m_current-3), 6, "SEEGER", "JAEGER", "GEIGER", "KRUGER", "SAUGER", "BURGER",
+				!(StringAt(-2, "PAGER", "WAGER", "NIGER", "ROGER", "LEGER", "CAGER")) ||
+				StringAt(-2, "AUGER", "EAGER", "INGER", "YAGER")) ||
+				StringAt(-3, "SEEGER", "JAEGER", "GEIGER", "KRUGER", "SAUGER", "BURGER",
 					"MEAGER", "MARGER", "RIEGER", "YAEGER", "STEGER", "PRAGER", "SWIGER",
 					"YERGER", "TORGER", "FERGER", "HILGER", "ZEIGER", "YARGER",
 					"COWGER", "CREGER", "KROGER", "KREGER", "GRAGER", "STIGER", "BERGER") ||
 				// 'berger' but not 'bergerac'
-				(StringAt((m_current-3), 6, "BERGER") && ((m_current + 2) == m_last)) ||
-				StringAt((m_current-4), 7, "KREIGER", "KRUEGER", "METZGER", "KRIEGER", "KROEGER", "STEIGER",
+				(StringAt(-3, "BERGER") && ((m_current + 2) == m_last)) ||
+				StringAt(-4, "KREIGER", "KRUEGER", "METZGER", "KRIEGER", "KROEGER", "STEIGER",
 					"DRAEGER", "BUERGER", "BOERGER", "FIBIGER") ||
 				// e.g. 'harshbarger', 'winebarger'
-				(StringAt((m_current-3), 6, "BARGER") && (m_current > 4)) ||
+				(StringAt(-3, "BARGER") && (m_current > 4)) ||
 				// e.g. 'weisgerber'
-				(StringAt(m_current, 6, "GERBER") && (m_current > 0)) ||
-				StringAt((m_current-5), 8, "SCHWAGER", "LYBARGER", "SPRENGER", "GALLAGER", "WILLIGER") ||
-				StringAt(0, 4, "HARGER") ||
-				(StringAt(0, 4, "AGER", "EGER") && (m_length == 4)) ||
-				StringAt((m_current-1), 6, "YGERNE") ||
-				StringAt((m_current-6), 9, "SCHWEIGER")) &&
-				!(StringAt((m_current-5), 10, "BELLIGEREN") ||
-					StringAt(0, 7, "MARGERY") ||
-					StringAt((m_current-3), 8, "BERGERAC")) {
+				(StringAt(0, "GERBER") && (m_current > 0)) ||
+				StringAt(-5, "SCHWAGER", "LYBARGER", "SPRENGER", "GALLAGER", "WILLIGER") ||
+				StringAtStart("HARGER") ||
+				(StringAtStart("AGER", "EGER") && (m_length == 4)) ||
+				StringAt(-1, "YGERNE") ||
+				StringAt(-6, "SCHWEIGER")) &&
+				!(StringAt(-5, "BELLIGEREN") ||
+					StringAtStart("MARGERY") ||
+					StringAt(-3, "BERGERAC")) {
 				if SlavoGermanic() {
 					MetaphAddExactApprox("G", "K")
 				} else {
@@ -2410,18 +2445,18 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 */
 	Encode_GEL := func() bool {
 		// more likely to be "-GEL-" => JL
-		if StringAt((m_current+1), 2, "EL") && (m_current > 0) {
+		if StringAt(+1, "EL") && (m_current > 0) {
 			// except for
 			// "BAGEL", "HEGEL", "HUGEL", "KUGEL", "NAGEL", "VOGEL", "FOGEL", "PAGEL"
 			if ((m_length == 5) &&
 				IsVowel(m_current-1) &&
 				!IsVowel(m_current-2) &&
-				!StringAt((m_current-2), 5, "NIGEL", "RIGEL")) ||
+				!StringAt(-2, "NIGEL", "RIGEL")) ||
 				// or the following as combining forms
-				StringAt((m_current-2), 5, "ENGEL", "HEGEL", "NAGEL", "VOGEL") ||
-				StringAt((m_current-3), 6, "MANGEL", "WEIGEL", "FLUGEL", "RANGEL", "HAUGEN", "RIEGEL", "VOEGEL") ||
-				StringAt((m_current-4), 7, "SPEIGEL", "STEIGEL", "WRANGEL", "SPIEGEL") ||
-				StringAt((m_current-4), 8, "DANEGELD") {
+				StringAt(-2, "ENGEL", "HEGEL", "NAGEL", "VOGEL") ||
+				StringAt(-3, "MANGEL", "WEIGEL", "FLUGEL", "RANGEL", "HAUGEN", "RIEGEL", "VOEGEL") ||
+				StringAt(-4, "SPEIGEL", "STEIGEL", "WRANGEL", "SPIEGEL") ||
+				StringAt(-4, "DANEGELD") {
 				if SlavoGermanic() {
 					MetaphAddExactApprox("G", "K")
 				} else {
@@ -2445,11 +2480,11 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 * @return true if encoding handled in this routine, false if not
 	 */
 	Hard_GE_At_End := func() bool {
-		return StringAt(0, 6, "RENEGE", "STONGE", "STANGE", "PRANGE", "KRESGE") ||
-			StringAt(0, 5, "BYRGE", "BIRGE", "BERGE", "HAUGE") ||
-			StringAt(0, 4, "HAGE") ||
-			StringAt(0, 5, "LANGE", "SYNGE", "BENGE", "RUNGE", "HELGE") ||
-			StringAt(0, 4, "INGE", "LAGE")
+		return StringAtStart("RENEGE", "STONGE", "STANGE", "PRANGE", "KRESGE") ||
+			StringAtStart("BYRGE", "BIRGE", "BERGE", "HAUGE") ||
+			StringAtStart("HAGE") ||
+			StringAtStart("LANGE", "SYNGE", "BENGE", "RUNGE", "HELGE") ||
+			StringAtStart("INGE", "LAGE")
 	}
 
 	/**
@@ -2460,25 +2495,25 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 *
 	 */
 	Internal_Hard_G_Other := func() bool {
-		return (StringAt(m_current, 4, "GETH", "GEAR", "GEIS", "GIRL", "GIVI", "GIVE", "GIFT",
+		return (StringAt(0, "GETH", "GEAR", "GEIS", "GIRL", "GIVI", "GIVE", "GIFT",
 			"GIRD", "GIRT", "GILV", "GILD", "GELD") &&
-			!StringAt((m_current-3), 6, "GINGIV")) ||
+			!StringAt(-3, "GINGIV")) ||
 			// "gish" but not "largish"
-			(StringAt((m_current+1), 3, "ISH") && (m_current > 0) && !StringAt(0, 4, "LARG")) ||
-			(StringAt((m_current-2), 5, "MAGED", "MEGID") && !((m_current + 2) == m_last)) ||
-			StringAt(m_current, 3, "GEZ") ||
-			StringAt(0, 4, "WEGE", "HAGE") ||
-			(StringAt((m_current-2), 6, "ONGEST", "UNGEST") &&
+			(StringAt(+1, "ISH") && (m_current > 0) && !StringAtStart("LARG")) ||
+			(StringAt(-2, "MAGED", "MEGID") && !((m_current + 2) == m_last)) ||
+			StringAt(0, "GEZ") ||
+			StringAtStart("WEGE", "HAGE") ||
+			(StringAt(-2, "ONGEST", "UNGEST") &&
 				((m_current + 3) == m_last) &&
-				!StringAt((m_current-3), 7, "CONGEST")) ||
-			StringAt(0, 5, "VOEGE", "BERGE", "HELGE") ||
-			(StringAt(0, 4, "ENGE", "BOGY") && (m_length == 4)) ||
-			StringAt(m_current, 6, "GIBBON") ||
-			StringAt(0, 10, "CORREGIDOR") ||
-			StringAt(0, 8, "INGEBORG") ||
-			(StringAt(m_current, 4, "GILL") &&
+				!StringAt(-3, "CONGEST")) ||
+			StringAtStart("VOEGE", "BERGE", "HELGE") ||
+			(StringAtStart("ENGE", "BOGY") && (m_length == 4)) ||
+			StringAt(0, "GIBBON") ||
+			StringAtStart("CORREGIDOR") ||
+			StringAtStart("INGEBORG") ||
+			(StringAt(0, "GILL") &&
 				(((m_current + 3) == m_last) || ((m_current + 4) == m_last)) &&
-				!StringAt(0, 8, "STURGILL"))
+				!StringAtStart("STURGILL"))
 	}
 
 	/**
@@ -2490,13 +2525,13 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 *
 	 */
 	Internal_Hard_G_Open_Syllable := func() bool {
-		return StringAt((m_current+1), 3, "EYE") ||
-			StringAt((m_current-2), 4, "FOGY", "POGY", "YOGI") ||
-			StringAt((m_current-2), 5, "MAGEE", "MCGEE", "HAGIO") ||
-			StringAt((m_current-1), 4, "RGEY", "OGEY") ||
-			StringAt((m_current-3), 5, "HOAGY", "STOGY", "PORGY") ||
-			StringAt((m_current-5), 8, "CARNEGIE") ||
-			(StringAt((m_current-1), 4, "OGEY", "OGIE") && ((m_current + 2) == m_last))
+		return StringAt(+1, "EYE") ||
+			StringAt(-2, "FOGY", "POGY", "YOGI") ||
+			StringAt(-2, "MAGEE", "MCGEE", "HAGIO") ||
+			StringAt(-1, "RGEY", "OGEY") ||
+			StringAt(-3, "HOAGY", "STOGY", "PORGY") ||
+			StringAt(-5, "CARNEGIE") ||
+			(StringAt(-1, "OGEY", "OGIE") && ((m_current + 2) == m_last))
 	}
 
 	/**
@@ -2507,20 +2542,20 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 *
 	 */
 	Internal_Hard_GEN_GIN_GET_GIT := func() bool {
-		return (StringAt((m_current-3), 6, "FORGET", "TARGET", "MARGIT", "MARGET", "TURGEN",
+		return (StringAt(-3, "FORGET", "TARGET", "MARGIT", "MARGET", "TURGEN",
 			"BERGEN", "MORGEN", "JORGEN", "HAUGEN", "JERGEN",
 			"JURGEN", "LINGEN", "BORGEN", "LANGEN", "KLAGEN", "STIGER", "BERGER") &&
-			!StringAt(m_current, 7, "GENETIC", "GENESIS") &&
-			!StringAt((m_current-4), 8, "PLANGENT")) ||
-			(StringAt((m_current-3), 6, "BERGIN", "FEAGIN", "DURGIN") && ((m_current + 2) == m_last)) ||
-			(StringAt((m_current-2), 5, "ENGEN") && !StringAt((m_current+3), 3, "DER", "ETI", "ESI")) ||
-			StringAt((m_current-4), 7, "JUERGEN") ||
-			StringAt(0, 5, "NAGIN", "MAGIN", "HAGIN") ||
-			(StringAt(0, 5, "ENGIN", "DEGEN", "LAGEN", "MAGEN", "NAGIN") && (m_length == 5)) ||
-			(StringAt((m_current-2), 5, "BEGET", "BEGIN", "HAGEN", "FAGIN",
+			!StringAt(0, "GENETIC", "GENESIS") &&
+			!StringAt(-4, "PLANGENT")) ||
+			(StringAt(-3, "BERGIN", "FEAGIN", "DURGIN") && ((m_current + 2) == m_last)) ||
+			(StringAt(-2, "ENGEN") && !StringAt(+3, "DER", "ETI", "ESI")) ||
+			StringAt(-4, "JUERGEN") ||
+			StringAtStart("NAGIN", "MAGIN", "HAGIN") ||
+			(StringAtStart("ENGIN", "DEGEN", "LAGEN", "MAGEN", "NAGIN") && (m_length == 5)) ||
+			(StringAt(-2, "BEGET", "BEGIN", "HAGEN", "FAGIN",
 				"BOGEN", "WIGIN", "NTGEN", "EIGEN",
 				"WEGEN", "WAGEN") &&
-				!StringAt((m_current-5), 8, "OSPHAGEN"))
+				!StringAt(-5, "OSPHAGEN"))
 	}
 
 	/**
@@ -2532,20 +2567,20 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 *
 	 */
 	Internal_Hard_NG := func() bool {
-		return (StringAt((m_current-3), 4, "DANG", "FANG", "SING") &&
+		return (StringAt(-3, "DANG", "FANG", "SING") &&
 			// exception to exception
-			!StringAt((m_current-5), 8, "DISINGEN")) ||
-			StringAt(0, 5, "INGEB", "ENGEB") ||
-			(StringAt((m_current-3), 4, "RING", "WING", "HANG", "LONG") &&
-				!(StringAt((m_current-4), 5, "CRING", "FRING", "ORANG", "TWING", "CHANG", "PHANG") ||
-					StringAt((m_current-5), 6, "SYRING") ||
-					StringAt((m_current-3), 7, "RINGENC", "RINGENT", "LONGITU", "LONGEVI") ||
+			!StringAt(-5, "DISINGEN")) ||
+			StringAtStart("INGEB", "ENGEB") ||
+			(StringAt(-3, "RING", "WING", "HANG", "LONG") &&
+				!(StringAt(-4, "CRING", "FRING", "ORANG", "TWING", "CHANG", "PHANG") ||
+					StringAt(-5, "SYRING") ||
+					StringAt(-3, "RINGENC", "RINGENT", "LONGITU", "LONGEVI") ||
 					// e.g. 'longino', 'mastrangelo'
-					(StringAt(m_current, 4, "GELO", "GINO") && ((m_current + 3) == m_last)))) ||
-			(StringAt((m_current-1), 3, "NGY") &&
+					(StringAt(0, "GELO", "GINO") && ((m_current + 3) == m_last)))) ||
+			(StringAt(-1, "NGY") &&
 				// exceptions to exception
-				!(StringAt((m_current-3), 5, "RANGY", "MANGY", "MINGY") ||
-					StringAt((m_current-4), 6, "SPONGY", "STINGY")))
+				!(StringAt(-3, "RANGY", "MANGY", "MINGY") ||
+					StringAt(-4, "SPONGY", "STINGY")))
 	}
 
 	/**
@@ -2574,10 +2609,10 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 */
 	Encode_Non_Initial_G_Front_Vowel := func() bool {
 		// -gy-, gi-, ge-
-		if StringAt((m_current + 1), 1, "E", "I", "Y") {
+		if StringAt(+1, "E", "I", "Y") {
 			// '-ge' at end
 			// almost always 'j 'sound
-			if StringAt(m_current, 2, "GE") && (m_current == (m_last - 1)) {
+			if StringAt(0, "GE") && (m_current == (m_last - 1)) {
 				if Hard_GE_At_End() {
 					if SlavoGermanic() {
 						MetaphAddExactApprox("G", "K")
@@ -2590,8 +2625,8 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 			} else {
 				if Internal_Hard_G() {
 					// don't encode KG or KK if e.g. "mcgill"
-					if !((m_current == 2) && StringAt(0, 2, "MC")) ||
-						((m_current == 3) && StringAt(0, 3, "MAC")) {
+					if !((m_current == 2) && StringAtStart("MC")) ||
+						((m_current == 3) && StringAtStart("MAC")) {
 						if SlavoGermanic() {
 							MetaphAddExactApprox("G", "K")
 						} else {
@@ -2618,11 +2653,11 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 */
 	Encode_GA_To_J := func() bool {
 		// 'margary', 'margarine'
-		if (StringAt((m_current-3), 7, "MARGARY", "MARGARI") &&
+		if (StringAt(-3, "MARGARY", "MARGARI") &&
 			// but not in spanish forms such as "margatita"
-			!StringAt((m_current-3), 8, "MARGARIT")) ||
-			StringAt(0, 4, "GAOL") ||
-			StringAt((m_current-2), 5, "ALGAE") {
+			!StringAt(-3, "MARGARIT")) ||
+			StringAtStart("GAOL") ||
+			StringAt(-2, "ALGAE") {
 			MetaphAddExactApprox("J", "G", "J", "K")
 			AdvanceCounter(2, 1)
 			return true
@@ -2652,7 +2687,7 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 			return
 		}
 
-		if !StringAt((m_current - 1), 1, "C", "K", "G", "Q") {
+		if !StringAt(-1, "C", "K", "G", "Q") {
 			MetaphAddExactApprox("G", "K")
 		}
 
@@ -2667,13 +2702,13 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 */
 	Encode_Initial_Silent_H := func() bool {
 		//'hour', 'herb', 'heir', 'honor'
-		if StringAt((m_current+1), 3, "OUR", "ERB", "EIR") ||
-			StringAt((m_current+1), 4, "ONOR") ||
-			StringAt((m_current+1), 5, "ONOUR", "ONEST") {
+		if StringAt(+1, "OUR", "ERB", "EIR") ||
+			StringAt(+1, "ONOR") ||
+			StringAt(+1, "ONOUR", "ONEST") {
 			// british pronounce H in this word
 			// americans give it 'H' for the name,
 			// no 'H' for the plant
-			if (m_current == 0) && StringAt(m_current, 4, "HERB") {
+			if (m_current == 0) && StringAt(0, "HERB") {
 				if m_encodeVowels {
 					MetaphAdd("HA", "A")
 				} else {
@@ -2701,7 +2736,7 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	Encode_Initial_HS := func() bool {
 		// old chinese pinyin transliteration
 		// e.g., 'HSIAO'
-		if (m_current == 0) && StringAt(0, 2, "HS") {
+		if (m_current == 0) && StringAtStart("HS") {
 			MetaphAdd("X")
 			m_current += 2
 			return true
@@ -2718,8 +2753,8 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 */
 	Encode_Initial_HU_HW := func() bool {
 		// spanish spellings and chinese pinyin transliteration
-		if StringAt(0, 3, "HUA", "HUE", "HWA") {
-			if !StringAt(m_current, 4, "HUEY") {
+		if StringAtStart("HUA", "HUE", "HWA") {
+			if !StringAt(0, "HUEY") {
 				MetaphAdd("A")
 
 				if !m_encodeVowels {
@@ -2747,12 +2782,12 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	Encode_Non_Initial_Silent_H := func() bool {
 		//exceptions - 'h' not pronounced
 		// "PROHIB" BUT NOT "PROHIBIT"
-		if StringAt((m_current-2), 5, "NIHIL", "VEHEM", "LOHEN", "NEHEM",
+		if StringAt(-2, "NIHIL", "VEHEM", "LOHEN", "NEHEM",
 			"MAHON", "MAHAN", "COHEN", "GAHAN") ||
-			StringAt((m_current-3), 6, "GRAHAM", "PROHIB", "FRAHER",
+			StringAt(-3, "GRAHAM", "PROHIB", "FRAHER",
 				"TOOHEY", "TOUHEY") ||
-			StringAt((m_current-3), 5, "TOUHY") ||
-			StringAt(0, 9, "CHIHUAHUA") {
+			StringAt(-3, "TOUHY") ||
+			StringAtStart("CHIHUAHUA") {
 			if !m_encodeVowels {
 				m_current += 2
 			} else {
@@ -2816,35 +2851,35 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 */
 	Encode_Spanish_J := func() bool {
 		//obvious spanish, e.g. "jose", "san jacinto"
-		if (StringAt((m_current+1), 3, "UAN", "ACI", "ALI", "EFE", "ICA", "IME", "OAQ", "UAR") &&
-			!StringAt(m_current, 8, "JIMERSON", "JIMERSEN")) ||
-			(StringAt((m_current+1), 3, "OSE") && ((m_current + 3) == m_last)) ||
-			StringAt((m_current+1), 4, "EREZ", "UNTA", "AIME", "AVIE", "AVIA") ||
-			StringAt((m_current+1), 6, "IMINEZ", "ARAMIL") ||
-			(((m_current + 2) == m_last) && StringAt((m_current-2), 5, "MEJIA")) ||
-			StringAt((m_current-2), 5, "TEJED", "TEJAD", "LUJAN", "FAJAR", "BEJAR", "BOJOR", "CAJIG",
+		if (StringAt(+1, "UAN", "ACI", "ALI", "EFE", "ICA", "IME", "OAQ", "UAR") &&
+			!StringAt(0, "JIMERSON", "JIMERSEN")) ||
+			(StringAt(+1, "OSE") && ((m_current + 3) == m_last)) ||
+			StringAt(+1, "EREZ", "UNTA", "AIME", "AVIE", "AVIA") ||
+			StringAt(+1, "IMINEZ", "ARAMIL") ||
+			(((m_current + 2) == m_last) && StringAt(-2, "MEJIA")) ||
+			StringAt(-2, "TEJED", "TEJAD", "LUJAN", "FAJAR", "BEJAR", "BOJOR", "CAJIG",
 				"DEJAS", "DUJAR", "DUJAN", "MIJAR", "MEJOR", "NAJAR",
 				"NOJOS", "RAJED", "RIJAL", "REJON", "TEJAN", "UIJAN") ||
-			StringAt((m_current-3), 8, "ALEJANDR", "GUAJARDO", "TRUJILLO") ||
-			(StringAt((m_current-2), 5, "RAJAS") && (m_current > 2)) ||
-			(StringAt((m_current-2), 5, "MEJIA") && !StringAt((m_current-2), 6, "MEJIAN")) ||
-			StringAt((m_current-1), 5, "OJEDA") ||
-			StringAt((m_current-3), 5, "LEIJA", "MINJA") ||
-			StringAt((m_current-3), 6, "VIAJES", "GRAJAL") ||
-			StringAt(m_current, 8, "JAUREGUI") ||
-			StringAt((m_current-4), 8, "HINOJOSA") ||
-			StringAt(0, 4, "SAN ") ||
+			StringAt(-3, "ALEJANDR", "GUAJARDO", "TRUJILLO") ||
+			(StringAt(-2, "RAJAS") && (m_current > 2)) ||
+			(StringAt(-2, "MEJIA") && !StringAt(-2, "MEJIAN")) ||
+			StringAt(-1, "OJEDA") ||
+			StringAt(-3, "LEIJA", "MINJA") ||
+			StringAt(-3, "VIAJES", "GRAJAL") ||
+			StringAt(0, "JAUREGUI") ||
+			StringAt(-4, "HINOJOSA") ||
+			StringAtStart("SAN ") ||
 			(((m_current + 1) == m_last) &&
 				(CharAt(m_current+1) == 'O') &&
 				// exceptions
-				!(StringAt(0, 4, "TOJO") ||
-					StringAt(0, 5, "BANJO") ||
-					StringAt(0, 6, "MARYJO"))) {
+				!(StringAtStart("TOJO") ||
+					StringAtStart("BANJO") ||
+					StringAtStart("MARYJO"))) {
 			// americans pronounce "juan" as 'wan'
 			// and "marijuana" and "tijuana" also
 			// do not get the 'H' as in spanish, so
 			// just treat it like a vowel in these cases
-			if !(StringAt(m_current, 4, "JUAN") || StringAt(m_current, 4, "JOAQ")) {
+			if !(StringAt(0, "JUAN") || StringAt(0, "JOAQ")) {
 				MetaphAdd("H")
 			} else {
 				if m_current == 0 {
@@ -2856,10 +2891,10 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 		}
 
 		// Jorge gets 2nd HARHA. also JULIO, JESUS
-		if StringAt((m_current+1), 4, "ORGE", "ULIO", "ESUS") &&
-			!StringAt(0, 6, "JORGEN") {
+		if StringAt(+1, "ORGE", "ULIO", "ESUS") &&
+			!StringAtStart("JORGEN") {
 			// get both consonants for "jorge"
-			if ((m_current + 4) == m_last) && StringAt((m_current+1), 4, "ORGE") {
+			if ((m_current + 4) == m_last) && StringAt(+1, "ORGE") {
 				if m_encodeVowels {
 					MetaphAdd("JARJ", "HARHA")
 				} else {
@@ -2885,10 +2920,10 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 *
 	 */
 	Encode_German_J := func() bool {
-		if StringAt((m_current+1), 2, "AH") ||
-			(StringAt((m_current+1), 5, "OHANN") && ((m_current + 5) == m_last)) ||
-			(StringAt((m_current+1), 3, "UNG") && !StringAt((m_current+1), 4, "UNGL")) ||
-			StringAt((m_current+1), 3, "UGO") {
+		if StringAt(+1, "AH") ||
+			(StringAt(+1, "OHANN") && ((m_current + 5) == m_last)) ||
+			(StringAt(+1, "UNG") && !StringAt(+1, "UNGL")) ||
+			StringAt(+1, "UGO") {
 			MetaphAdd("A")
 			AdvanceCounter(2, 1)
 			return true
@@ -2904,7 +2939,7 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 *
 	 */
 	Encode_Spanish_OJ_UJ := func() bool {
-		if StringAt((m_current + 1), 5, "OJOBA", "UJUY ") {
+		if StringAt(+1, "OJOBA", "UJUY ") {
 			if m_encodeVowels {
 				MetaphAdd("HAH")
 			} else {
@@ -2927,15 +2962,15 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	Encode_Spanish_J_2 := func() bool {
 		// spanish forms e.g. "brujo", "badajoz"
 		if (((m_current - 2) == 0) &&
-			StringAt((m_current-2), 4, "BOJA", "BAJA", "BEJA", "BOJO", "MOJA", "MOJI", "MEJI")) ||
+			StringAt(-2, "BOJA", "BAJA", "BEJA", "BOJO", "MOJA", "MOJI", "MEJI")) ||
 			(((m_current - 3) == 0) &&
-				StringAt((m_current-3), 5, "FRIJO", "BRUJO", "BRUJA", "GRAJE", "GRIJA", "LEIJA", "QUIJA")) ||
+				StringAt(-3, "FRIJO", "BRUJO", "BRUJA", "GRAJE", "GRIJA", "LEIJA", "QUIJA")) ||
 			(((m_current + 3) == m_last) &&
-				StringAt((m_current-1), 5, "AJARA")) ||
+				StringAt(-1, "AJARA")) ||
 			(((m_current + 2) == m_last) &&
-				StringAt((m_current-1), 4, "AJOS", "EJOS", "OJAS", "OJOS", "UJON", "AJOZ", "AJAL", "UJAR", "EJON", "EJAN")) ||
+				StringAt(-1, "AJOS", "EJOS", "OJAS", "OJOS", "UJON", "AJOZ", "AJAL", "UJAR", "EJON", "EJAN")) ||
 			(((m_current + 1) == m_last) &&
-				(StringAt((m_current-1), 3, "OJA", "EJA") && !StringAt(0, 4, "DEJA"))) {
+				(StringAt(-1, "OJA", "EJA") && !StringAtStart("DEJA"))) {
 			MetaphAdd("H")
 			AdvanceCounter(2, 1)
 			return true
@@ -2951,24 +2986,24 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 *
 	 */
 	Encode_J_As_Vowel := func() bool {
-		if StringAt(m_current, 5, "JEWSK") {
+		if StringAt(0, "JEWSK") {
 			MetaphAdd("J", "")
 			return true
 		}
 
 		// e.g. "stijl", "sejm" - dutch, scandanavian, and eastern european spellings
-		return (StringAt((m_current+1), 1, "L", "T", "K", "S", "N", "M") &&
+		return (StringAt(+1, "L", "T", "K", "S", "N", "M") &&
 			// except words from hindi and arabic
-			!StringAt((m_current+2), 1, "A")) ||
-			StringAt(0, 9, "HALLELUJA", "LJUBLJANA") ||
-			StringAt(0, 4, "LJUB", "BJOR") ||
-			StringAt(0, 5, "HAJEK") ||
-			StringAt(0, 3, "WOJ") ||
+			!StringAt(+2, "A")) ||
+			StringAtStart("HALLELUJA", "LJUBLJANA") ||
+			StringAtStart("LJUB", "BJOR") ||
+			StringAtStart("HAJEK") ||
+			StringAtStart("WOJ") ||
 			// e.g. 'fjord'
-			StringAt(0, 2, "FJ") ||
+			StringAtStart("FJ") ||
 			// e.g. 'rekjavik', 'blagojevic'
-			StringAt(m_current, 5, "JAVIK", "JEVIC") ||
-			(((m_current + 1) == m_last) && StringAt(0, 5, "SONJA", "TANJA", "TONJA"))
+			StringAt(0, "JAVIK", "JEVIC") ||
+			(((m_current + 1) == m_last) && StringAtStart("SONJA", "TANJA", "TONJA"))
 	}
 
 	/**
@@ -2985,15 +3020,15 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 * should get an alternate encoding as a vowel
 	 */
 	Names_Beginning_With_J_That_Get_Alt_Y := func() bool {
-		if StringAt(0, 3, "JAN", "JON", "JAN", "JIN", "JEN") ||
-			StringAt(0, 4, "JUHL", "JULY", "JOEL", "JOHN", "JOSH",
+		if StringAtStart("JAN", "JON", "JAN", "JIN", "JEN") ||
+			StringAtStart("JUHL", "JULY", "JOEL", "JOHN", "JOSH",
 				"JUDE", "JUNE", "JONI", "JULI", "JENA",
 				"JUNG", "JINA", "JANA", "JENI", "JOEL",
 				"JANN", "JONA", "JENE", "JULE", "JANI",
 				"JONG", "JOHN", "JEAN", "JUNG", "JONE",
 				"JARA", "JUST", "JOST", "JAHN", "JACO",
 				"JANG", "JUDE", "JONE") ||
-			StringAt(0, 5, "JOANN", "JANEY", "JANAE", "JOANA", "JUTTA",
+			StringAtStart("JOANN", "JANEY", "JANAE", "JOANA", "JUTTA",
 				"JULEE", "JANAY", "JANEE", "JETTA", "JOHNA",
 				"JOANE", "JAYNA", "JANES", "JONAS", "JONIE",
 				"JUSTA", "JUNIE", "JUNKO", "JENAE", "JULIO",
@@ -3004,7 +3039,7 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 				"JACOB", "JOSUE", "JOSEF", "JULES", "JULIE",
 				"JULIA", "JANIE", "JANIS", "JENNA", "JANNA",
 				"JEANA", "JENNI", "JEANE", "JONNA") ||
-			StringAt(0, 6, "JORDAN", "JORDON", "JOSEPH", "JOSHUA", "JOSIAH",
+			StringAtStart("JORDAN", "JORDON", "JOSEPH", "JOSHUA", "JOSIAH",
 				"JOSPEH", "JUDSON", "JULIAN", "JULIUS", "JUNIOR",
 				"JUDITH", "JOESPH", "JOHNIE", "JOANNE", "JEANNE",
 				"JOANNA", "JOSEFA", "JULIET", "JANNIE", "JANELL",
@@ -3022,8 +3057,9 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 				"JANSON", "JACOBI", "JUDSON", "JARBOE", "JOHSON",
 				"JANZEN", "JETTON", "JUNKER", "JONSON", "JAROSZ",
 				"JENNER", "JAGGER", "JASMIN", "JEPSEN", "JORDEN",
-				"JANNEY", "JUHASZ", "JERGEN", "JAKOB") ||
-			StringAt(0, 7, "JOHNSON", "JOHNNIE", "JASMINE", "JEANNIE", "JOHANNA",
+				"JANNEY", "JUHASZ", "JERGEN") ||
+			StringAtStart("JAKOB") ||
+			StringAtStart("JOHNSON", "JOHNNIE", "JASMINE", "JEANNIE", "JOHANNA",
 				"JANELLE", "JANETTE", "JULIANA", "JUSTINA", "JOSETTE",
 				"JOELLEN", "JENELLE", "JULIETA", "JULIANN", "JULISSA",
 				"JENETTE", "JANETTA", "JOSELYN", "JONELLE", "JESENIA",
@@ -3034,19 +3070,19 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 				"JARDINE", "JAGGERS", "JURGENS", "JOURDAN", "JULIANO",
 				"JOSEPHS", "JHONSON", "JOZWIAK", "JANICKI", "JELINEK",
 				"JANSSON", "JOACHIM", "JANELLE", "JACOBUS", "JENNING",
-				"JANTZEN", "JOHNNIE", "") ||
-			StringAt(0, 8, "JOSEFINA", "JEANNINE", "JULIANNE", "JULIANNA", "JONATHAN",
+				"JANTZEN", "JOHNNIE") ||
+			StringAtStart("JOSEFINA", "JEANNINE", "JULIANNE", "JULIANNA", "JONATHAN",
 				"JONATHON", "JEANETTE", "JANNETTE", "JEANETTA", "JOHNETTA",
 				"JENNEFER", "JULIENNE", "JOSPHINE", "JEANELLE", "JOHNETTE",
 				"JULIEANN", "JOSEFINE", "JULIETTA", "JOHNSTON", "JACOBSON",
 				"JACOBSEN", "JOHANSEN", "JOHANSON", "JAWORSKI", "JENNETTE",
 				"JELLISON", "JOHANNES", "JASINSKI", "JUERGENS", "JARNAGIN",
 				"JEREMIAH", "JEPPESEN", "JARNIGAN", "JANOUSEK") ||
-			StringAt(0, 9, "JOHNATHAN", "JOHNATHON", "JORGENSEN", "JEANMARIE", "JOSEPHINA",
+			StringAtStart("JOHNATHAN", "JOHNATHON", "JORGENSEN", "JEANMARIE", "JOSEPHINA",
 				"JEANNETTE", "JOSEPHINE", "JEANNETTA", "JORGENSON", "JANKOWSKI",
 				"JOHNSTONE", "JABLONSKI", "JOSEPHSON", "JOHANNSEN", "JURGENSEN",
 				"JIMMERSON", "JOHANSSON") ||
-			StringAt(0, 10, "JAKUBOWSKI") {
+			StringAtStart("JAKUBOWSKI") {
 			return true
 		}
 
@@ -3140,19 +3176,19 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 */
 	Encode_Silent_K := func() bool {
 		//skip this except for special cases
-		if (m_current == 0) && StringAt(m_current, 2, "KN") {
-			if !(StringAt((m_current+2), 5, "ESSET", "IEVEL") || StringAt((m_current+2), 3, "ISH")) {
+		if (m_current == 0) && StringAt(0, "KN") {
+			if !(StringAt(+2, "ESSET", "IEVEL") || StringAt(+2, "ISH")) {
 				m_current += 1
 				return true
 			}
 		}
 
 		// e.g. "know", "knit", "knob"
-		if (StringAt((m_current+1), 3, "NOW", "NIT", "NOT", "NOB") &&
+		if (StringAt(+1, "NOW", "NIT", "NOT", "NOB") &&
 			// exception, "slipknot" => SLPNT but "banknote" => PNKNT
-			!StringAt(0, 8, "BANKNOTE")) ||
-			StringAt((m_current+1), 4, "NOCK", "NUCK", "NIFE", "NACK") ||
-			StringAt((m_current+1), 5, "NIGHT") {
+			!StringAtStart("BANKNOTE")) ||
+			StringAt(+1, "NOCK", "NUCK", "NIFE", "NACK") ||
+			StringAt(+1, "NIGHT") {
 			// N already encoded before
 			// e.g. "penknife"
 			if (m_current > 0) && CharAt(m_current-1) == 'N' {
@@ -3195,7 +3231,7 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 		if m_encodeVowels == true {
 			// e.g. "ertl", "vogl"
 			if (m_current == m_last) &&
-				StringAt((m_current-1), 1, "D", "G", "T") {
+				StringAt(-1, "D", "G", "T") {
 				MetaphAdd("A")
 			}
 		}
@@ -3210,7 +3246,7 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 */
 	Encode_LELY_To_L := func() bool {
 		// e.g. "agilely", "docilely"
-		if StringAt((m_current-1), 5, "ILELY") &&
+		if StringAt(-1, "ILELY") &&
 			((m_current + 3) == m_last) {
 			MetaphAdd("L")
 			m_current += 3
@@ -3228,7 +3264,7 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 *
 	 */
 	Encode_COLONEL := func() bool {
-		if StringAt((m_current - 2), 7, "COLONEL") {
+		if StringAt(-2, "COLONEL") {
 			MetaphAdd("R")
 			m_current += 2
 			return true
@@ -3246,11 +3282,11 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	Encode_French_AULT := func() bool {
 		// e.g. "renault" and "foucault", well known to americans, but not "fault"
 		if (m_current > 3) &&
-			(StringAt((m_current-3), 5, "RAULT", "NAULT", "BAULT", "SAULT", "GAULT", "CAULT") ||
-				StringAt((m_current-4), 6, "REAULT", "RIAULT", "NEAULT", "BEAULT")) &&
+			(StringAt(-3, "RAULT", "NAULT", "BAULT", "SAULT", "GAULT", "CAULT") ||
+				StringAt(-4, "REAULT", "RIAULT", "NEAULT", "BEAULT")) &&
 			!(RootOrInflections(m_inWord, "ASSAULT") ||
-				StringAt((m_current-8), 10, "SOMERSAULT", "") ||
-				StringAt((m_current-9), 11, "SUMMERSAULT")) {
+				StringAt(-8, "SOMERSAULT") ||
+				StringAt(-9, "SUMMERSAULT")) {
 			m_current += 2
 			return true
 		}
@@ -3266,7 +3302,7 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 */
 	Encode_French_EUIL := func() bool {
 		// e.g. "auteuil"
-		if StringAt((m_current-3), 4, "EUIL") && (m_current == m_last) {
+		if StringAt(-3, "EUIL") && (m_current == m_last) {
 			m_current++
 			return true
 		}
@@ -3282,7 +3318,7 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 */
 	Encode_French_OULX := func() bool {
 		// e.g. "proulx"
-		if StringAt((m_current-2), 4, "OULX") && ((m_current + 1) == m_last) {
+		if StringAt(-2, "OULX") && ((m_current + 1) == m_last) {
 			m_current += 2
 			return true
 		}
@@ -3297,18 +3333,18 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 *
 	 */
 	Encode_Silent_L_In_LM := func() bool {
-		if StringAt(m_current, 2, "LM", "LN") {
+		if StringAt(0, "LM", "LN") {
 			// e.g. "lincoln", "holmes", "psalm", "salmon"
-			if (StringAt((m_current-2), 4, "COLN", "CALM", "BALM", "MALM", "PALM") ||
-				(StringAt((m_current-1), 3, "OLM") && ((m_current + 1) == m_last)) ||
-				StringAt((m_current-3), 5, "PSALM", "QUALM") ||
-				StringAt((m_current-2), 6, "SALMON", "HOLMES") ||
-				StringAt((m_current-1), 6, "ALMOND") ||
-				((m_current == 1) && StringAt((m_current-1), 4, "ALMS"))) &&
-				(!StringAt((m_current+2), 1, "A") &&
-					!StringAt((m_current-2), 5, "BALMO") &&
-					!StringAt((m_current-2), 6, "PALMER", "PALMOR", "BALMER") &&
-					!StringAt((m_current-3), 5, "THALM")) {
+			if (StringAt(-2, "COLN", "CALM", "BALM", "MALM", "PALM") ||
+				(StringAt(-1, "OLM") && ((m_current + 1) == m_last)) ||
+				StringAt(-3, "PSALM", "QUALM") ||
+				StringAt(-2, "SALMON", "HOLMES") ||
+				StringAt(-1, "ALMOND") ||
+				((m_current == 1) && StringAt(-1, "ALMS"))) &&
+				(!StringAt(+2, "A") &&
+					!StringAt(-2, "BALMO") &&
+					!StringAt(-2, "PALMER", "PALMOR", "BALMER") &&
+					!StringAt(-3, "THALM")) {
 				m_current++
 				return true
 			} else {
@@ -3328,20 +3364,20 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 *
 	 */
 	Encode_Silent_L_In_LK_LV := func() bool {
-		if (StringAt((m_current-2), 4, "WALK", "YOLK", "FOLK", "HALF", "TALK", "CALF", "BALK", "CALK") ||
-			(StringAt((m_current-2), 4, "POLK") &&
-				!StringAt((m_current-2), 5, "POLKA", "WALKO")) ||
-			(StringAt((m_current-2), 4, "HALV") &&
-				!StringAt((m_current-2), 5, "HALVA", "HALVO")) ||
-			(StringAt((m_current-3), 5, "CAULK", "CHALK", "BAULK", "FAULK") &&
-				!StringAt((m_current-4), 6, "SCHALK")) ||
-			(StringAt((m_current-2), 5, "SALVE", "CALVE") ||
-				StringAt((m_current-2), 6, "SOLDER")) &&
+		if (StringAt(-2, "WALK", "YOLK", "FOLK", "HALF", "TALK", "CALF", "BALK", "CALK") ||
+			(StringAt(-2, "POLK") &&
+				!StringAt(-2, "POLKA", "WALKO")) ||
+			(StringAt(-2, "HALV") &&
+				!StringAt(-2, "HALVA", "HALVO")) ||
+			(StringAt(-3, "CAULK", "CHALK", "BAULK", "FAULK") &&
+				!StringAt(-4, "SCHALK")) ||
+			(StringAt(-2, "SALVE", "CALVE") ||
+				StringAt(-2, "SOLDER")) &&
 				// exceptions to above cases where 'L' is usually pronounced
-				!StringAt((m_current-2), 6, "SALVER", "CALVER")) &&
-			!StringAt((m_current-5), 9, "GONSALVES", "GONCALVES") &&
-			!StringAt((m_current-2), 6, "BALKAN", "TALKAL") &&
-			!StringAt((m_current-3), 5, "PAULK", "CHALF") {
+				!StringAt(-2, "SALVER", "CALVER")) &&
+			!StringAt(-5, "GONSALVES", "GONCALVES") &&
+			!StringAt(-2, "BALKAN", "TALKAL") &&
+			!StringAt(-3, "PAULK", "CHALF") {
 			m_current++
 			return true
 		}
@@ -3357,9 +3393,9 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 */
 	Encode_Silent_L_In_OULD := func() bool {
 		//'would', 'could'
-		if StringAt((m_current-3), 5, "WOULD", "COULD") ||
-			(StringAt((m_current-4), 6, "SHOULD") &&
-				!StringAt((m_current-4), 8, "SHOULDER")) {
+		if StringAt(-3, "WOULD", "COULD") ||
+			(StringAt(-4, "SHOULD") &&
+				!StringAt(-4, "SHOULDER")) {
 			MetaphAddExactApprox("D", "T")
 			m_current += 2
 			return true
@@ -3376,20 +3412,21 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 *
 	 */
 	Encode_LL_As_Vowel_Special_Cases := func() bool {
-		if StringAt((m_current-5), 8, "TORTILLA") ||
-			StringAt((m_current-8), 11, "RATATOUILLE") ||
+		if StringAt(-5, "TORTILLA") ||
+			StringAt(-8, "RATATOUILLE") ||
 			// e.g. 'guillermo', "veillard"
-			(StringAt(0, 5, "GUILL", "VEILL", "GAILL") &&
+			(StringAtStart("GUILL", "VEILL", "GAILL") &&
 				// 'guillotine' usually has '-ll-' pronounced as 'L' in english
-				!(StringAt((m_current-3), 7, "GUILLOT", "GUILLOR", "GUILLEN") ||
-					(StringAt(0, 5, "GUILL") && (m_length == 5)))) ||
+				!(StringAt(-3, "GUILLOT", "GUILLOR", "GUILLEN") ||
+					(StringAtStart("GUILL") && (m_length == 5)))) ||
 			// e.g. "brouillard", "gremillion"
-			StringAt(0, 7, "BROUILL", "GREMILL", "ROBILL") ||
+			StringAtStart("BROUILL", "GREMILL") ||
+			StringAtStart("ROBILL") ||
 			// e.g. 'mireille'
-			(StringAt((m_current-2), 5, "EILLE") &&
+			(StringAt(-2, "EILLE") &&
 				((m_current + 2) == m_last) &&
 				// exception "reveille" usually pronounced as 're-vil-lee'
-				!StringAt((m_current-5), 8, "REVEILLE")) {
+				!StringAt(-5, "REVEILLE")) {
 			m_current += 2
 			return true
 		}
@@ -3408,15 +3445,14 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 		// give both pronounciations since an american might pronounce "cabrillo"
 		// in the spanish or the american fashion.
 		if (((m_current + 3) == m_length) &&
-			StringAt((m_current-1), 4, "ILLO", "ILLA", "ALLE")) ||
-			(((StringAt((m_last-1), 2, "AS", "OS") ||
-				StringAt(m_last, 2, "AS", "OS") ||
-				StringAt(m_last, 1, "A", "O")) &&
-				StringAt((m_current-1), 2, "AL", "IL")) &&
-				!StringAt((m_current-1), 4, "ALLA")) ||
-			StringAt(0, 5, "VILLE", "VILLA") ||
-			StringAt(0, 8, "GALLARDO", "VALLADAR", "MAGALLAN", "CAVALLAR", "BALLASTE") ||
-			StringAt(0, 3, "LLA") {
+			StringAt(-1, "ILLO", "ILLA", "ALLE")) ||
+			(((StringAtEnd("AS", "OS") ||
+				StringAtEnd("A", "O")) &&
+				StringAt(-1, "AL", "IL")) &&
+				!StringAt(-1, "ALLA")) ||
+			StringAtStart("VILLE", "VILLA") ||
+			StringAtStart("GALLARDO", "VALLADAR", "MAGALLAN", "CAVALLAR", "BALLASTE") ||
+			StringAtStart("LLA") {
 			MetaphAdd("L", "")
 			m_current += 2
 			return true
@@ -3462,26 +3498,26 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 			(CharAt(save_current-1) != 'R') &&
 			// lots of exceptions to this:
 			!IsVowel(save_current+2) &&
-			!StringAt(0, 7, "ECCLESI", "COMPLEC", "COMPLEJ", "ROBLEDO") &&
-			!StringAt(0, 5, "MCCLE", "MCLEL") &&
-			!StringAt(0, 6, "EMBLEM", "KADLEC") &&
-			!(((save_current + 2) == m_last) && StringAt(save_current, 3, "LET")) &&
-			!StringAt(save_current, 7, "LETTING") &&
-			!StringAt(save_current, 6, "LETELY", "LETTER", "LETION", "LETIAN", "LETING", "LETORY") &&
-			!StringAt(save_current, 5, "LETUS", "LETIV") &&
-			!StringAt(save_current, 4, "LESS", "LESQ", "LECT", "LEDG", "LETE", "LETH", "LETS", "LETT") &&
-			!StringAt(save_current, 3, "LEG", "LER", "LEX") &&
+			!StringAtStart("ECCLESI", "COMPLEC", "COMPLEJ", "ROBLEDO") &&
+			!StringAtStart("MCCLE", "MCLEL") &&
+			!StringAtStart("EMBLEM", "KADLEC") &&
+			!(((save_current + 2) == m_last) && StringAt(save_current, "LET")) &&
+			!StringAt(save_current, "LETTING") &&
+			!StringAt(save_current, "LETELY", "LETTER", "LETION", "LETIAN", "LETING", "LETORY") &&
+			!StringAt(save_current, "LETUS", "LETIV") &&
+			!StringAt(save_current, "LESS", "LESQ", "LECT", "LEDG", "LETE", "LETH", "LETS", "LETT") &&
+			!StringAt(save_current, "LEG", "LER", "LEX") &&
 			// e.g. "complement" !=> KAMPALMENT
-			!(StringAt(save_current, 6, "LEMENT") &&
-				!(StringAt((m_current-5), 6, "BATTLE", "TANGLE", "PUZZLE", "RABBLE", "BABBLE") ||
-					StringAt((m_current-4), 5, "TABLE"))) &&
-			!(((save_current + 2) == m_last) && StringAt((save_current-2), 5, "OCLES", "ACLES", "AKLES")) &&
-			!StringAt((save_current-3), 5, "LISLE", "AISLE") &&
-			!StringAt(0, 4, "ISLE") &&
-			!StringAt(0, 6, "ROBLES") &&
-			!StringAt((save_current-4), 7, "PROBLEM", "RESPLEN") &&
-			!StringAt((save_current-3), 6, "REPLEN") &&
-			!StringAt((save_current-2), 4, "SPLE") &&
+			!(StringAt(save_current, "LEMENT") &&
+				!(StringAt(-5, "BATTLE", "TANGLE", "PUZZLE", "RABBLE", "BABBLE") ||
+					StringAt(-4, "TABLE"))) &&
+			!(((save_current + 2) == m_last) && StringAt((save_current-2), "OCLES", "ACLES", "AKLES")) &&
+			!StringAt((save_current-3), "LISLE", "AISLE") &&
+			!StringAtStart("ISLE") &&
+			!StringAtStart("ROBLES") &&
+			!StringAt((save_current-4), "PROBLEM", "RESPLEN") &&
+			!StringAt((save_current-3), "REPLEN") &&
+			!StringAt((save_current-2), "SPLE") &&
 			(CharAt(save_current-1) != 'H') &&
 			(CharAt(save_current-1) != 'W') {
 			MetaphAdd("AL")
@@ -3513,9 +3549,9 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 			(CharAt(save_current+1) == 'E') &&
 			(save_current > 1) &&
 			((save_current + 1) != m_last) &&
-			!(StringAt((save_current+1), 2, "ES", "ED") &&
+			!(StringAt((save_current+1), "ES", "ED") &&
 				((save_current + 2) == m_last)) &&
-			!StringAt((save_current-1), 5, "RLEST") {
+			!StringAt((save_current-1), "RLEST") {
 			MetaphAdd("LA")
 			m_current = SkipVowels(m_current)
 			return true
@@ -3582,7 +3618,7 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 */
 	Encode_Silent_M_At_Beginning := func() bool {
 		//skip these when at start of word
-		if (m_current == 0) && StringAt(m_current, 2, "MN") {
+		if (m_current == 0) && StringAt(0, "MN") {
 			m_current += 1
 			return true
 		}
@@ -3597,9 +3633,9 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 *
 	 */
 	Encode_MR_And_MRS := func() bool {
-		if (m_current == 0) && StringAt(m_current, 2, "MR") {
+		if (m_current == 0) && StringAt(0, "MR") {
 			// exceptions for "mr." and "mrs."
-			if (m_length == 2) && StringAt(m_current, 2, "MR") {
+			if (m_length == 2) && StringAt(0, "MR") {
 				if m_encodeVowels {
 					MetaphAdd("MASTAR")
 				} else {
@@ -3607,7 +3643,7 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 				}
 				m_current += 2
 				return true
-			} else if (m_length == 3) && StringAt(m_current, 3, "MRS") {
+			} else if (m_length == 3) && StringAt(0, "MRS") {
 				if m_encodeVowels {
 					MetaphAdd("MASAS")
 				} else {
@@ -3631,20 +3667,20 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 		// should only find irish and
 		// scottish names e.g. 'macintosh'
 		if (m_current == 0) &&
-			(StringAt(0, 7, "MACIVER", "MACEWEN") ||
-				StringAt(0, 8, "MACELROY", "MACILROY") ||
-				StringAt(0, 9, "MACINTOSH") ||
-				StringAt(0, 2, "MC")) {
+			(StringAtStart("MACIVER", "MACEWEN") ||
+				StringAtStart("MACELROY", "MACILROY") ||
+				StringAtStart("MACINTOSH") ||
+				StringAtStart("MC")) {
 			if m_encodeVowels {
 				MetaphAdd("MAK")
 			} else {
 				MetaphAdd("MK")
 			}
 
-			if StringAt(0, 2, "MC") {
-				if StringAt((m_current+2), 1, "K", "G", "Q") &&
+			if StringAtStart("MC") {
+				if StringAt(+2, "K", "G", "Q") &&
 					// watch out for e.g. "McGeorge"
-					!StringAt((m_current+2), 4, "GEOR") {
+					!StringAt(+2, "GEOR") {
 					m_current += 3
 				} else {
 					m_current += 2
@@ -3666,8 +3702,8 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 *
 	 */
 	Encode_MPT := func() bool {
-		if StringAt((m_current-2), 8, "COMPTROL") ||
-			StringAt((m_current-4), 7, "ACCOMPT") {
+		if StringAt(-2, "COMPTROL") ||
+			StringAt(-4, "ACCOMPT") {
 			MetaphAdd("N")
 			m_current += 2
 			return true
@@ -3686,9 +3722,9 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 		// e.g. "LAMB", "COMB", "LIMB", "DUMB", "BOMB"
 		// Handle combining roots first
 		if ((m_current == 3) &&
-			StringAt((m_current-3), 5, "THUMB")) ||
+			StringAt(-3, "THUMB")) ||
 			((m_current == 2) &&
-				StringAt((m_current-2), 4, "DUMB", "BOMB", "DAMN", "LAMB", "NUMB", "TOMB")) {
+				StringAt(-2, "DUMB", "BOMB", "DAMN", "LAMB", "NUMB", "TOMB")) {
 			return true
 		}
 
@@ -3702,11 +3738,11 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 *
 	 */
 	Test_Pronounced_MB := func() bool {
-		if StringAt((m_current-2), 6, "NUMBER") ||
-			(StringAt((m_current+2), 1, "A") &&
-				!StringAt((m_current-2), 7, "DUMBASS")) ||
-			StringAt((m_current+2), 1, "O") ||
-			StringAt((m_current-2), 6, "LAMBEN", "LAMBER", "LAMBET", "TOMBIG", "LAMBRE") {
+		if StringAt(-2, "NUMBER") ||
+			(StringAt(+2, "A") &&
+				!StringAt(-2, "DUMBASS")) ||
+			StringAt(+2, "O") ||
+			StringAt(-2, "LAMBEN", "LAMBER", "LAMBET", "TOMBIG", "LAMBRE") {
 			return true
 		}
 
@@ -3727,18 +3763,18 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 				// but not at end of word. The tests are for standard
 				// noun suffixes.
 				// e.g. "climbing" => KLMNK
-				StringAt((m_current+2), 3, "ING", "ABL") ||
-				StringAt((m_current+2), 4, "LIKE") ||
+				StringAt(+2, "ING", "ABL") ||
+				StringAt(+2, "LIKE") ||
 				((CharAt(m_current+2) == 'S') && ((m_current + 2) == m_last)) ||
-				StringAt((m_current-5), 7, "BUNCOMB") ||
+				StringAt(-5, "BUNCOMB") ||
 				// e.g. "bomber",
-				(StringAt((m_current+2), 2, "ED", "ER") &&
+				(StringAt(+2, "ED", "ER") &&
 					((m_current + 3) == m_last) &&
-					(StringAt(0, 5, "CLIMB", "PLUMB") ||
+					(StringAtStart("CLIMB", "PLUMB") ||
 						// e.g. "beachcomber"
-						!StringAt((m_current-1), 5, "IMBER", "AMBER", "EMBER", "UMBER")) &&
+						!StringAt(-1, "IMBER", "AMBER", "EMBER", "UMBER")) &&
 					// exceptions
-					!StringAt((m_current-2), 6, "CUMBER", "SOMBER"))) {
+					!StringAt(-2, "CUMBER", "SOMBER"))) {
 			return true
 		}
 
@@ -3753,8 +3789,8 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 */
 	Test_Pronounced_MB_2 := func() bool {
 		// e.g. "bombastic", "umbrage", "flamboyant"
-		if StringAt((m_current-1), 5, "OMBAS", "OMBAD", "UMBRA") ||
-			StringAt((m_current-3), 4, "FLAM") {
+		if StringAt(-1, "OMBAS", "OMBAD", "UMBRA") ||
+			StringAt(-3, "FLAM") {
 			return true
 		}
 
@@ -3771,12 +3807,12 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 		return (CharAt(m_current+1) == 'N') &&
 			(((m_current + 1) == m_last) ||
 				// or at the end of a word but followed by suffixes
-				(StringAt((m_current+2), 3, "ING", "EST") && ((m_current + 4) == m_last)) ||
+				(StringAt(+2, "ING", "EST") && ((m_current + 4) == m_last)) ||
 				((CharAt(m_current+2) == 'S') && ((m_current + 2) == m_last)) ||
-				(StringAt((m_current+2), 2, "LY", "ER", "ED") &&
+				(StringAt(+2, "LY", "ER", "ED") &&
 					((m_current + 3) == m_last)) ||
-				StringAt((m_current-2), 9, "DAMNEDEST") ||
-				StringAt((m_current-5), 9, "GODDAMNIT"))
+				StringAt(-2, "DAMNEDEST") ||
+				StringAt(-5, "GODDAMNIT"))
 	}
 
 	/**
@@ -3836,8 +3872,8 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 */
 	Encode_NCE := func() bool {
 		//'acceptance', 'accountancy'
-		if StringAt((m_current+1), 1, "C", "S") &&
-			StringAt((m_current+2), 1, "E", "Y", "I") &&
+		if StringAt(+1, "C", "S") &&
+			StringAt(+2, "E", "Y", "I") &&
 			(((m_current + 2) == m_last) ||
 				((m_current+3) == m_last) &&
 					(CharAt(m_current+3) == 'S')) {
@@ -3865,9 +3901,9 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 			m_current++
 		}
 
-		if !StringAt((m_current-3), 8, "MONSIEUR") &&
+		if !StringAt(-3, "MONSIEUR") &&
 			// e.g. "aloneness",
-			!StringAt((m_current-3), 6, "NENESS") {
+			!StringAt(-3, "NENESS") {
 			MetaphAdd("N")
 		}
 	}
@@ -3881,7 +3917,7 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	Encode_Silent_P_At_Beginning := func() bool {
 		//skip these when at start of word
 		if (m_current == 0) &&
-			StringAt(m_current, 2, "PN", "PF", "PS", "PT") {
+			StringAt(0, "PN", "PF", "PS", "PT") {
 			m_current += 1
 			return true
 		}
@@ -3898,9 +3934,9 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	Encode_PT := func() bool {
 		// 'pterodactyl', 'receipt', 'asymptote'
 		if CharAt(m_current+1) == 'T' {
-			if ((m_current == 0) && StringAt(m_current, 5, "PTERO")) ||
-				StringAt((m_current-5), 7, "RECEIPT") ||
-				StringAt((m_current-4), 8, "ASYMPTOT") {
+			if ((m_current == 0) && StringAt(0, "PTERO")) ||
+				StringAt(-5, "RECEIPT") ||
+				StringAt(-4, "ASYMPTOT") {
 				MetaphAdd("T")
 				m_current += 2
 				return true
@@ -3921,21 +3957,21 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	Encode_PH := func() bool {
 		if CharAt(m_current+1) == 'H' {
 			// 'PH' silent in these contexts
-			if StringAt(m_current, 9, "PHTHALEIN") ||
-				((m_current == 0) && StringAt(m_current, 4, "PHTH")) ||
-				StringAt((m_current-3), 10, "APOPHTHEGM") {
+			if StringAt(0, "PHTHALEIN") ||
+				((m_current == 0) && StringAt(0, "PHTH")) ||
+				StringAt(-3, "APOPHTHEGM") {
 				MetaphAdd("0")
 				m_current += 4
 				// combining forms
 				//'sheepherd', 'upheaval', 'cupholder'
 			} else if (m_current > 0) &&
-				(StringAt((m_current+2), 3, "EAD", "OLE", "ELD", "ILL", "OLD", "EAP", "ERD",
+				(StringAt(+2, "EAD", "OLE", "ELD", "ILL", "OLD", "EAP", "ERD",
 					"ARD", "ANG", "ORN", "EAV", "ART") ||
-					StringAt((m_current+2), 4, "OUSE") ||
-					(StringAt((m_current+2), 2, "AM") && !StringAt((m_current-1), 5, "LPHAM")) ||
-					StringAt((m_current+2), 5, "AMMER", "AZARD", "UGGER") ||
-					StringAt((m_current+2), 6, "OLSTER")) &&
-				!StringAt((m_current-3), 5, "LYMPH", "NYMPH") {
+					StringAt(+2, "OUSE") ||
+					(StringAt(+2, "AM") && !StringAt(-1, "LPHAM")) ||
+					StringAt(+2, "AMMER", "AZARD", "UGGER") ||
+					StringAt(+2, "OLSTER")) &&
+				!StringAt(-3, "LYMPH", "NYMPH") {
 				MetaphAdd("P")
 				AdvanceCounter(3, 2)
 			} else {
@@ -3976,8 +4012,8 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 */
 	Encode_RPS := func() bool {
 		//'-corps-', 'corpsman'
-		if StringAt((m_current-3), 5, "CORPS") &&
-			!StringAt((m_current-3), 6, "CORPSE") {
+		if StringAt(-3, "CORPS") &&
+			!StringAt(-3, "CORPSE") {
 			m_current += 2
 			return true
 		}
@@ -3995,8 +4031,8 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	Encode_COUP := func() bool {
 		//'coup'
 		if (m_current == m_last) &&
-			StringAt((m_current-3), 4, "COUP") &&
-			!StringAt((m_current-5), 6, "RECOUP") {
+			StringAt(-3, "COUP") &&
+			!StringAt(-5, "RECOUP") {
 			m_current++
 			return true
 		}
@@ -4013,7 +4049,7 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 */
 	Encode_PNEUM := func() bool {
 		//'-pneum-'
-		if StringAt((m_current + 1), 4, "NEUM") {
+		if StringAt(+1, "NEUM") {
 			MetaphAdd("N")
 			m_current += 2
 			return true
@@ -4032,7 +4068,7 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 */
 	Encode_PSYCH := func() bool {
 		//'-psych-'
-		if StringAt((m_current + 1), 4, "SYCH") {
+		if StringAt(+1, "SYCH") {
 			if m_encodeVowels {
 				MetaphAdd("SAK")
 			} else {
@@ -4055,7 +4091,7 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 */
 	Encode_PSALM := func() bool {
 		//'-psalm-'
-		if StringAt((m_current + 1), 4, "SALM") {
+		if StringAt(+1, "SALM") {
 			// go ahead and encode entire word
 			if m_encodeVowels {
 				MetaphAdd("SAM")
@@ -4077,7 +4113,7 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	Encode_PB := func() {
 		// e.g. "campbell", "raspberry"
 		// eat redundant 'P' or 'B'
-		if StringAt((m_current + 1), 1, "P", "B") {
+		if StringAt(+1, "P", "B") {
 			m_current += 2
 		} else {
 			m_current++
@@ -4112,7 +4148,7 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 */
 	Encode_Q := func() {
 		// current pinyin
-		if StringAt(m_current, 3, "QIN") {
+		if StringAt(0, "QIN") {
 			MetaphAdd("X")
 			m_current++
 			return
@@ -4136,15 +4172,15 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 *
 	 */
 	Encode_RZ := func() bool {
-		if StringAt((m_current-2), 4, "GARZ", "KURZ", "MARZ", "MERZ", "HERZ", "PERZ", "WARZ") ||
-			StringAt(m_current, 5, "RZANO", "RZOLA") ||
-			StringAt((m_current-1), 4, "ARZA", "ARZN") {
+		if StringAt(-2, "GARZ", "KURZ", "MARZ", "MERZ", "HERZ", "PERZ", "WARZ") ||
+			StringAt(0, "RZANO", "RZOLA") ||
+			StringAt(-1, "ARZA", "ARZN") {
 			return false
 		}
 
 		// 'yastrzemski' usually has 'z' silent in
 		// united states, but should get 'X' in poland
-		if StringAt((m_current - 4), 11, "YASTRZEMSKI") {
+		if StringAt(-4, "YASTRZEMSKI") {
 			MetaphAdd("R", "X")
 			m_current += 2
 			return true
@@ -4152,22 +4188,22 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 		// 'BRZEZINSKI' gets two pronunciations
 		// in the united states, neither of which
 		// are authentically polish
-		if StringAt((m_current - 1), 10, "BRZEZINSKI") {
+		if StringAt(-1, "BRZEZINSKI") {
 			MetaphAdd("RS", "RJ")
 			// skip over 2nd 'Z'
 			m_current += 4
 			return true
 			// 'z' in 'rz after voiceless consonant gets 'X'
 			// in alternate polish style pronunciation
-		} else if StringAt((m_current-1), 3, "TRZ", "PRZ", "KRZ") ||
-			(StringAt(m_current, 2, "RZ") &&
+		} else if StringAt(-1, "TRZ", "PRZ", "KRZ") ||
+			(StringAt(0, "RZ") &&
 				(IsVowel(m_current-1) || (m_current == 0))) {
 			MetaphAdd("RS", "X")
 			m_current += 2
 			return true
 			// 'z' in 'rz after voiceled consonant, vowel, or at
 			// beginning gets 'J' in alternate polish style pronunciation
-		} else if StringAt((m_current - 1), 3, "BRZ", "DRZ", "GRZ") {
+		} else if StringAt(-1, "BRZ", "DRZ", "GRZ") {
 			MetaphAdd("RS", "J")
 			m_current += 2
 			return true
@@ -4188,25 +4224,25 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 		// e.g. "rogier", "monsieur", "surburban"
 		return ((m_current == m_last) &&
 			// reliably french word ending
-			StringAt((m_current-2), 3, "IER") &&
+			StringAt(-2, "IER") &&
 			// e.g. "metier"
-			(StringAt((m_current-5), 3, "MET", "VIV", "LUC") ||
+			(StringAt(-5, "MET", "VIV", "LUC") ||
 				// e.g. "cartier", "bustier"
-				StringAt((m_current-6), 4, "CART", "DOSS", "FOUR", "OLIV", "BUST", "DAUM", "ATEL",
+				StringAt(-6, "CART", "DOSS", "FOUR", "OLIV", "BUST", "DAUM", "ATEL",
 					"SONN", "CORM", "MERC", "PELT", "POIR", "BERN", "FORT", "GREN",
 					"SAUC", "GAGN", "GAUT", "GRAN", "FORC", "MESS", "LUSS", "MEUN",
 					"POTH", "HOLL", "CHEN") ||
 				// e.g. "croupier"
-				StringAt((m_current-7), 5, "CROUP", "TORCH", "CLOUT", "FOURN", "GAUTH", "TROTT",
+				StringAt(-7, "CROUP", "TORCH", "CLOUT", "FOURN", "GAUTH", "TROTT",
 					"DEROS", "CHART") ||
 				// e.g. "chevalier"
-				StringAt((m_current-8), 6, "CHEVAL", "LAVOIS", "PELLET", "SOMMEL", "TREPAN", "LETELL", "COLOMB") ||
-				StringAt((m_current-9), 7, "CHARCUT") ||
-				StringAt((m_current-10), 8, "CHARPENT"))) ||
-			StringAt((m_current-2), 7, "SURBURB", "WORSTED") ||
-			StringAt((m_current-2), 9, "WORCESTER") ||
-			StringAt((m_current-7), 8, "MONSIEUR") ||
-			StringAt((m_current-6), 8, "POITIERS")
+				StringAt(-8, "CHEVAL", "LAVOIS", "PELLET", "SOMMEL", "TREPAN", "LETELL", "COLOMB") ||
+				StringAt(-9, "CHARCUT") ||
+				StringAt(-10, "CHARPENT"))) ||
+			StringAt(-2, "SURBURB", "WORSTED") ||
+			StringAt(-2, "WORCESTER") ||
+			StringAt(-7, "MONSIEUR") ||
+			StringAt(-6, "POITIERS")
 	}
 
 	/**
@@ -4223,13 +4259,13 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 		if (m_encodeVowels) &&
 			(CharAt(m_current+1) == 'E') &&
 			(m_length > 3) &&
-			!StringAt(0, 5, "OUTRE", "LIBRE", "ANDRE") &&
-			!(StringAt(0, 4, "FRED", "TRES") && (m_length == 4)) &&
-			!StringAt((m_current-2), 5, "LDRED", "LFRED", "NDRED", "NFRED", "NDRES", "TRES", "IFRED") &&
+			!StringAtStart("OUTRE", "LIBRE", "ANDRE") &&
+			!(StringAtStart("FRED", "TRES") && (m_length == 4)) &&
+			!StringAt(-2, "LDRED", "LFRED", "NDRED", "NFRED", "NDRES", "TRES", "IFRED") &&
 			!IsVowel(m_current-1) &&
 			(((m_current + 1) == m_last) ||
 				(((m_current + 2) == m_last) &&
-					StringAt((m_current+2), 1, "D", "S"))) {
+					StringAt(+2, "D", "S"))) {
 			MetaphAdd("AR")
 			return true
 		}
@@ -4253,7 +4289,7 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 		}
 
 		// eat redundant 'R'; also skip 'S' as well as 'R' in "poitiers"
-		if (CharAt(m_current+1) == 'R') || StringAt((m_current-6), 8, "POITIERS") {
+		if (CharAt(m_current+1) == 'R') || StringAt(-6, "POITIERS") {
 			m_current += 2
 		} else {
 			m_current++
@@ -4269,10 +4305,10 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 * @return true if swedish, dutch, or slavic derived name
 	 */
 	Names_Beginning_With_SW_That_Get_Alt_SV := func() bool {
-		if StringAt(0, 7, "SWANSON", "SWENSON", "SWINSON", "SWENSEN",
+		if StringAtStart("SWANSON", "SWENSON", "SWINSON", "SWENSEN",
 			"SWOBODA") ||
-			StringAt(0, 9, "SWIDERSKI", "SWARTHOUT") ||
-			StringAt(0, 10, "SWEARENGIN") {
+			StringAtStart("SWIDERSKI", "SWARTHOUT") ||
+			StringAtStart("SWEARENGIN") {
 			return true
 		}
 
@@ -4288,13 +4324,13 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 * @return true if german derived name
 	 */
 	Names_Beginning_With_SW_That_Get_Alt_XV := func() bool {
-		if StringAt(0, 5, "SWART") ||
-			StringAt(0, 6, "SWARTZ", "SWARTS", "SWIGER") ||
-			StringAt(0, 7, "SWITZER", "SWANGER", "SWIGERT",
+		if StringAtStart("SWART") ||
+			StringAtStart("SWARTZ", "SWARTS", "SWIGER") ||
+			StringAtStart("SWITZER", "SWANGER", "SWIGERT",
 				"SWIGART", "SWIHART") ||
-			StringAt(0, 8, "SWEITZER", "SWATZELL", "SWINDLER") ||
-			StringAt(0, 9, "SWINEHART") ||
-			StringAt(0, 10, "SWEARINGEN") {
+			StringAtStart("SWEITZER", "SWATZELL", "SWINDLER") ||
+			StringAtStart("SWINEHART") ||
+			StringAtStart("SWEARINGEN") {
 			return true
 		}
 
@@ -4338,7 +4374,7 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 */
 	Encode_SKJ := func() bool {
 		// scandinavian
-		if StringAt(m_current, 4, "SKJO", "SKJU") &&
+		if StringAt(0, "SKJO", "SKJU") &&
 			IsVowel(m_current+3) {
 			MetaphAdd("X")
 			m_current += 3
@@ -4355,7 +4391,7 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 *
 	 */
 	Encode_SJ := func() bool {
-		if StringAt(0, 2, "SJ") {
+		if StringAtStart("SJ") {
 			MetaphAdd("X")
 			m_current += 2
 			return true
@@ -4373,7 +4409,7 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 */
 	Encode_Silent_French_S_Final := func() bool {
 		// "louis" is an exception because it gets two pronuncuations
-		if StringAt(0, 5, "LOUIS") && (m_current == m_last) {
+		if StringAtStart("LOUIS") && (m_current == m_last) {
 			MetaphAdd("S", "")
 			m_current++
 			return true
@@ -4381,19 +4417,19 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 
 		// french words familiar to americans where final s is silent
 		if (m_current == m_last) &&
-			(StringAt(0, 4, "YVES") ||
-				(StringAt(0, 4, "HORS") && (m_current == 3)) ||
-				StringAt((m_current-4), 5, "CAMUS", "YPRES") ||
-				StringAt((m_current-5), 6, "MESNES", "DEBRIS", "BLANCS", "INGRES", "CANNES") ||
-				StringAt((m_current-6), 7, "CHABLIS", "APROPOS", "JACQUES", "ELYSEES", "OEUVRES",
+			(StringAtStart("YVES") ||
+				(StringAtStart("HORS") && (m_current == 3)) ||
+				StringAt(-4, "CAMUS", "YPRES") ||
+				StringAt(-5, "MESNES", "DEBRIS", "BLANCS", "INGRES", "CANNES") ||
+				StringAt(-6, "CHABLIS", "APROPOS", "JACQUES", "ELYSEES", "OEUVRES",
 					"GEORGES", "DESPRES") ||
-				StringAt(0, 8, "ARKANSAS", "FRANCAIS", "CRUDITES", "BRUYERES") ||
-				StringAt(0, 9, "DESCARTES", "DESCHUTES", "DESCHAMPS", "DESROCHES", "DESCHENES") ||
-				StringAt(0, 10, "RENDEZVOUS") ||
-				StringAt(0, 11, "CONTRETEMPS", "DESLAURIERS")) ||
+				StringAtStart("ARKANSAS", "FRANCAIS", "CRUDITES", "BRUYERES") ||
+				StringAtStart("DESCARTES", "DESCHUTES", "DESCHAMPS", "DESROCHES", "DESCHENES") ||
+				StringAtStart("RENDEZVOUS") ||
+				StringAtStart("CONTRETEMPS", "DESLAURIERS")) ||
 			((m_current == m_last) &&
-				StringAt((m_current-2), 2, "AI", "OI", "UI") &&
-				!StringAt(0, 4, "LOIS", "LUIS")) {
+				StringAt(-2, "AI", "OI", "UI") &&
+				!StringAtStart("LOIS", "LUIS")) {
 			m_current++
 			return true
 		}
@@ -4410,16 +4446,16 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 */
 	Encode_Silent_French_S_Internal := func() bool {
 		// french words familiar to americans where internal s is silent
-		if StringAt((m_current-2), 9, "DESCARTES") ||
-			StringAt((m_current-2), 7, "DESCHAM", "DESPRES", "DESROCH", "DESROSI", "DESJARD", "DESMARA",
+		if StringAt(-2, "DESCARTES") ||
+			StringAt(-2, "DESCHAM", "DESPRES", "DESROCH", "DESROSI", "DESJARD", "DESMARA",
 				"DESCHEN", "DESHOTE", "DESLAUR") ||
-			StringAt((m_current-2), 6, "MESNES") ||
-			StringAt((m_current-5), 8, "DUQUESNE", "DUCHESNE") ||
-			StringAt((m_current-7), 10, "BEAUCHESNE") ||
-			StringAt((m_current-3), 7, "FRESNEL") ||
-			StringAt((m_current-3), 9, "GROSVENOR") ||
-			StringAt((m_current-4), 10, "LOUISVILLE") ||
-			StringAt((m_current-7), 10, "ILLINOISAN") {
+			StringAt(-2, "MESNES") ||
+			StringAt(-5, "DUQUESNE", "DUCHESNE") ||
+			StringAt(-7, "BEAUCHESNE") ||
+			StringAt(-3, "FRESNEL") ||
+			StringAt(-3, "GROSVENOR") ||
+			StringAt(-4, "LOUISVILLE") ||
+			StringAt(-7, "ILLINOISAN") {
 			m_current++
 			return true
 		}
@@ -4434,12 +4470,12 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 */
 	Encode_ISL := func() bool {
 		//special cases 'island', 'isle', 'carlisle', 'carlysle'
-		if (StringAt((m_current-2), 4, "LISL", "LYSL", "AISL") &&
-			!StringAt((m_current-3), 7, "PAISLEY", "BAISLEY", "ALISLAM", "ALISLAH", "ALISLAA")) ||
+		if (StringAt(-2, "LISL", "LYSL", "AISL") &&
+			!StringAt(-3, "PAISLEY", "BAISLEY", "ALISLAM", "ALISLAH", "ALISLAA")) ||
 			((m_current == 1) &&
-				((StringAt((m_current-1), 4, "ISLE") ||
-					StringAt((m_current-1), 5, "ISLAN")) &&
-					!StringAt((m_current-1), 5, "ISLEY", "ISLER"))) {
+				((StringAt(-1, "ISLE") ||
+					StringAt(-1, "ISLAN")) &&
+					!StringAt(-1, "ISLEY", "ISLER"))) {
 			m_current++
 			return true
 		}
@@ -4456,25 +4492,25 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 */
 	Encode_STL := func() bool {
 		//'hustle', 'bustle', 'whistle'
-		if (StringAt(m_current, 4, "STLE", "STLI") &&
-			!StringAt((m_current+2), 4, "LESS", "LIKE", "LINE")) ||
-			StringAt((m_current-3), 7, "THISTLY", "BRISTLY", "GRISTLY") ||
+		if (StringAt(0, "STLE", "STLI") &&
+			!StringAt(+2, "LESS", "LIKE", "LINE")) ||
+			StringAt(-3, "THISTLY", "BRISTLY", "GRISTLY") ||
 			// e.g. "corpuscle"
-			StringAt((m_current-1), 5, "USCLE") {
+			StringAt(-1, "USCLE") {
 			// KRISTEN, KRYSTLE, CRYSTLE, KRISTLE all pronounce the 't'
 			// also, exceptions where "-LING" is a nominalizing suffix
-			if StringAt(0, 7, "KRISTEN", "KRYSTLE", "CRYSTLE", "KRISTLE") ||
-				StringAt(0, 11, "CHRISTENSEN", "CHRISTENSON") ||
-				StringAt((m_current-3), 9, "FIRSTLING") ||
-				StringAt((m_current-2), 8, "NESTLING", "WESTLING") {
+			if StringAtStart("KRISTEN", "KRYSTLE", "CRYSTLE", "KRISTLE") ||
+				StringAtStart("CHRISTENSEN", "CHRISTENSON") ||
+				StringAt(-3, "FIRSTLING") ||
+				StringAt(-2, "NESTLING", "WESTLING") {
 				MetaphAdd("ST")
 				m_current += 2
 			} else {
 				if m_encodeVowels &&
 					(CharAt(m_current+3) == 'E') &&
 					(CharAt(m_current+4) != 'R') &&
-					!StringAt((m_current+3), 4, "ETTE", "ETTA") &&
-					!StringAt((m_current+3), 2, "EY") {
+					!StringAt(+3, "ETTE", "ETTA") &&
+					!StringAt(+3, "EY") {
 					MetaphAdd("SAL")
 					flag_AL_inversion = true
 				} else {
@@ -4496,7 +4532,7 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 */
 	Encode_Christmas := func() bool {
 		//'christmas'
-		if StringAt((m_current - 4), 8, "CHRISTMA") {
+		if StringAt(-4, "CHRISTMA") {
 			MetaphAdd("SM")
 			m_current += 3
 			return true
@@ -4514,7 +4550,7 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 */
 	Encode_STHM := func() bool {
 		//'asthma', 'isthmus'
-		if StringAt(m_current, 4, "STHM") {
+		if StringAt(0, "STHM") {
 			MetaphAdd("SM")
 			m_current += 4
 			return true
@@ -4532,10 +4568,10 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 */
 	Encode_ISTEN := func() bool {
 		// 't' is silent in verb, pronounced in name
-		if StringAt(0, 8, "CHRISTEN") {
+		if StringAtStart("CHRISTEN") {
 			// the word itself
 			if RootOrInflections(m_inWord, "CHRISTEN") ||
-				StringAt(0, 11, "CHRISTENDOM") {
+				StringAtStart("CHRISTENDOM") {
 				MetaphAdd("S", "ST")
 			} else {
 				// e.g. 'christenson', 'christene'
@@ -4546,8 +4582,8 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 		}
 
 		//e.g. 'glisten', 'listen'
-		if StringAt((m_current-2), 6, "LISTEN", "RISTEN", "HASTEN", "FASTEN", "MUSTNT") ||
-			StringAt((m_current-3), 7, "MOISTEN") {
+		if StringAt(-2, "LISTEN", "RISTEN", "HASTEN", "FASTEN", "MUSTNT") ||
+			StringAt(-3, "MOISTEN") {
 			MetaphAdd("S")
 			m_current += 2
 			return true
@@ -4564,7 +4600,7 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 */
 	Encode_Sugar := func() bool {
 		//special case 'sugar-'
-		if StringAt(m_current, 5, "SUGAR") {
+		if StringAt(0, "SUGAR") {
 			MetaphAdd("X")
 			m_current++
 			return true
@@ -4582,9 +4618,9 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 *
 	 */
 	Encode_SH := func() bool {
-		if StringAt(m_current, 2, "SH") {
+		if StringAt(0, "SH") {
 			// exception
-			if StringAt((m_current - 2), 8, "CASHMERE") {
+			if StringAt(-2, "CASHMERE") {
 				MetaphAdd("J")
 				m_current += 2
 				return true
@@ -4593,24 +4629,24 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 			//combining forms, e.g. 'clotheshorse', 'woodshole'
 			if (m_current > 0) &&
 				// e.g. "mishap"
-				((StringAt((m_current+1), 3, "HAP") && ((m_current + 3) == m_last)) ||
+				((StringAt(+1, "HAP") && ((m_current + 3) == m_last)) ||
 					// e.g. "hartsheim", "clothshorse"
-					StringAt((m_current+1), 4, "HEIM", "HOEK", "HOLM", "HOLZ", "HOOD", "HEAD", "HEID",
+					StringAt(+1, "HEIM", "HOEK", "HOLM", "HOLZ", "HOOD", "HEAD", "HEID",
 						"HAAR", "HORS", "HOLE", "HUND", "HELM", "HAWK", "HILL") ||
 					// e.g. "dishonor"
-					StringAt((m_current+1), 5, "HEART", "HATCH", "HOUSE", "HOUND", "HONOR") ||
+					StringAt(+1, "HEART", "HATCH", "HOUSE", "HOUND", "HONOR") ||
 					// e.g. "mishear"
-					(StringAt((m_current+2), 3, "EAR") && ((m_current + 4) == m_last)) ||
+					(StringAt(+2, "EAR") && ((m_current + 4) == m_last)) ||
 					// e.g. "hartshorn"
-					(StringAt((m_current+2), 3, "ORN") && !StringAt((m_current-2), 7, "UNSHORN")) ||
+					(StringAt(+2, "ORN") && !StringAt(-2, "UNSHORN")) ||
 					// e.g. "newshour" but not "bashour", "manshour"
-					(StringAt((m_current+1), 4, "HOUR") &&
-						!(StringAt(0, 7, "BASHOUR") || StringAt(0, 8, "MANSHOUR") || StringAt(0, 6, "ASHOUR"))) ||
+					(StringAt(+1, "HOUR") &&
+						!(StringAtStart("BASHOUR") || StringAtStart("MANSHOUR") || StringAtStart("ASHOUR"))) ||
 					// e.g. "dishonest", "grasshopper"
-					StringAt((m_current+2), 5, "ARMON", "ONEST", "ALLOW", "OLDER", "OPPER", "EIMER", "ANDLE", "ONOUR") ||
+					StringAt(+2, "ARMON", "ONEST", "ALLOW", "OLDER", "OPPER", "EIMER", "ANDLE", "ONOUR") ||
 					// e.g. "dishabille", "transhumance"
-					StringAt((m_current+2), 6, "ABILLE", "UMANCE", "ABITUA")) {
-				if !StringAt((m_current - 1), 1, "S") {
+					StringAt(+2, "ABILLE", "UMANCE", "ABITUA")) {
+				if !StringAt(-1, "S") {
 					MetaphAdd("S")
 				}
 			} else {
@@ -4635,14 +4671,14 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 */
 	Encode_SCH := func() bool {
 		// these words were combining forms many centuries ago
-		if StringAt((m_current + 1), 2, "CH") {
+		if StringAt(+1, "CH") {
 			if (m_current > 0) &&
 				// e.g. "mischief", "escheat"
-				(StringAt((m_current+3), 3, "IEF", "EAT") ||
+				(StringAt(+3, "IEF", "EAT") ||
 					// e.g. "mischance"
-					StringAt((m_current+3), 4, "ANCE", "ARGE") ||
+					StringAt(+3, "ANCE", "ARGE") ||
 					// e.g. "eschew"
-					StringAt(0, 6, "ESCHEW")) {
+					StringAtStart("ESCHEW")) {
 				MetaphAdd("S")
 				m_current++
 				return true
@@ -4650,17 +4686,17 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 
 			//Schlesinger's rule
 			//dutch, danish, italian, greek origin, e.g. "school", "schooner", "schiavone", "schiz-"
-			if (StringAt((m_current+3), 2, "OO", "ER", "EN", "UY", "ED", "EM", "IA", "IZ", "IS", "OL") &&
-				!StringAt(m_current, 6, "SCHOLT", "SCHISL", "SCHERR")) ||
-				StringAt((m_current+3), 3, "ISZ") ||
-				(StringAt((m_current-1), 6, "ESCHAT", "ASCHIN", "ASCHAL", "ISCHAE", "ISCHIA") &&
-					!StringAt((m_current-2), 8, "FASCHING")) ||
-				(StringAt((m_current-1), 5, "ESCHI") && ((m_current + 3) == m_last)) ||
+			if (StringAt(+3, "OO", "ER", "EN", "UY", "ED", "EM", "IA", "IZ", "IS", "OL") &&
+				!StringAt(0, "SCHOLT", "SCHISL", "SCHERR")) ||
+				StringAt(+3, "ISZ") ||
+				(StringAt(-1, "ESCHAT", "ASCHIN", "ASCHAL", "ISCHAE", "ISCHIA") &&
+					!StringAt(-2, "FASCHING")) ||
+				(StringAt(-1, "ESCHI") && ((m_current + 3) == m_last)) ||
 				(CharAt(m_current+3) == 'Y') {
 				// e.g. "schermerhorn", "schenker", "schistose"
-				if StringAt((m_current+3), 2, "ER", "EN", "IS") &&
+				if StringAt(+3, "ER", "EN", "IS") &&
 					(((m_current + 4) == m_last) ||
-						StringAt((m_current+3), 3, "ENK", "ENB", "IST")) {
+						StringAt(+3, "ENK", "ENB", "IST")) {
 					MetaphAdd("X", "SK")
 				} else {
 					MetaphAdd("SK")
@@ -4692,11 +4728,11 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 */
 	Encode_SUR := func() bool {
 		// 'erasure', 'usury'
-		if StringAt((m_current + 1), 3, "URE", "URA", "URY") {
+		if StringAt(+1, "URE", "URA", "URY") {
 			//'sure', 'ensure'
 			if (m_current == 0) ||
-				StringAt((m_current-1), 1, "N", "K") ||
-				StringAt((m_current-2), 2, "NO") {
+				StringAt(-1, "N", "K") ||
+				StringAt(-2, "NO") {
 				MetaphAdd("X")
 			} else {
 				MetaphAdd("J")
@@ -4719,9 +4755,9 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 */
 	Encode_SU := func() bool {
 		//'sensuous', 'consensual'
-		if StringAt((m_current+1), 2, "UO", "UA") && (m_current != 0) {
+		if StringAt(+1, "UO", "UA") && (m_current != 0) {
 			// exceptions e.g. "persuade"
-			if StringAt((m_current - 1), 4, "RSUA") {
+			if StringAt(-1, "RSUA") {
 				MetaphAdd("S")
 				// exceptions e.g. "casual"
 			} else if IsVowel(m_current - 1) {
@@ -4745,9 +4781,9 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 *
 	 */
 	Encode_SSIO := func() bool {
-		if StringAt((m_current + 1), 4, "SION") {
+		if StringAt(+1, "SION") {
 			//"abcission"
-			if StringAt((m_current - 2), 2, "CI") {
+			if StringAt(-2, "CI") {
 				MetaphAdd("J")
 				//'mission'
 			} else {
@@ -4771,9 +4807,9 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 */
 	Encode_SS := func() bool {
 		// e.g. "russian", "pressure"
-		if StringAt((m_current-1), 5, "USSIA", "ESSUR", "ISSUR", "ISSUE") ||
+		if StringAt(-1, "USSIA", "ESSUR", "ISSUR", "ISSUE") ||
 			// e.g. "hessian", "assurance"
-			StringAt((m_current-1), 6, "ESSIAN", "ASSURE", "ASSURA", "ISSUAB", "ISSUAN", "ASSIUS") {
+			StringAt(-1, "ESSIAN", "ASSURE", "ASSURA", "ISSUAB", "ISSUAN", "ASSIUS") {
 			MetaphAdd("X")
 			AdvanceCounter(3, 2)
 			return true
@@ -4791,35 +4827,35 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 */
 	Encode_SIA := func() bool {
 		// e.g. "controversial", also "fuchsia", "ch" is silent
-		if StringAt((m_current-2), 5, "CHSIA") ||
-			StringAt((m_current-1), 5, "RSIAL") {
+		if StringAt(-2, "CHSIA") ||
+			StringAt(-1, "RSIAL") {
 			MetaphAdd("X")
 			AdvanceCounter(3, 1)
 			return true
 		}
 
 		// names generally get 'X' where terms, e.g. "aphasia" get 'J'
-		if (StringAt(0, 6, "ALESIA", "ALYSIA", "ALISIA", "STASIA") &&
+		if (StringAtStart("ALESIA", "ALYSIA", "ALISIA", "STASIA") &&
 			(m_current == 3) &&
-			!StringAt(0, 9, "ANASTASIA")) ||
-			StringAt((m_current-5), 9, "DIONYSIAN") ||
-			StringAt((m_current-5), 8, "THERESIA") {
+			!StringAtStart("ANASTASIA")) ||
+			StringAt(-5, "DIONYSIAN") ||
+			StringAt(-5, "THERESIA") {
 			MetaphAdd("X", "S")
 			AdvanceCounter(3, 1)
 			return true
 		}
 
-		if (StringAt(m_current, 3, "SIA") && ((m_current + 2) == m_last)) ||
-			(StringAt(m_current, 4, "SIAN") && ((m_current + 3) == m_last)) ||
-			StringAt((m_current-5), 9, "AMBROSIAL") {
-			if (IsVowel(m_current-1) || StringAt((m_current-1), 1, "R")) &&
+		if (StringAt(0, "SIA") && ((m_current + 2) == m_last)) ||
+			(StringAt(0, "SIAN") && ((m_current + 3) == m_last)) ||
+			StringAt(-5, "AMBROSIAL") {
+			if (IsVowel(m_current-1) || StringAt(-1, "R")) &&
 				// exclude compounds based on names, or french or greek words
-				!(StringAt(0, 5, "JAMES", "NICOS", "PEGAS", "PEPYS") ||
-					StringAt(0, 6, "HOBBES", "HOLMES", "JAQUES", "KEYNES") ||
-					StringAt(0, 7, "MALTHUS", "HOMOOUS") ||
-					StringAt(0, 8, "MAGLEMOS", "HOMOIOUS") ||
-					StringAt(0, 9, "LEVALLOIS", "TARDENOIS") ||
-					StringAt((m_current-4), 5, "ALGES")) {
+				!(StringAtStart("JAMES", "NICOS", "PEGAS", "PEPYS") ||
+					StringAtStart("HOBBES", "HOLMES", "JAQUES", "KEYNES") ||
+					StringAtStart("MALTHUS", "HOMOOUS") ||
+					StringAtStart("MAGLEMOS", "HOMOIOUS") ||
+					StringAtStart("LEVALLOIS", "TARDENOIS") ||
+					StringAt(-4, "ALGES")) {
 				MetaphAdd("J")
 			} else {
 				MetaphAdd("S")
@@ -4840,15 +4876,15 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 */
 	Encode_SIO := func() bool {
 		// special case, irish name
-		if StringAt(0, 7, "SIOBHAN") {
+		if StringAtStart("SIOBHAN") {
 			MetaphAdd("X")
 			AdvanceCounter(3, 1)
 			return true
 		}
 
-		if StringAt((m_current + 1), 3, "ION") {
+		if StringAt(+1, "ION") {
 			// e.g. "vision", "version"
-			if IsVowel(m_current-1) || StringAt((m_current-2), 2, "ER", "UR") {
+			if IsVowel(m_current-1) || StringAt(-2, "ER", "UR") {
 				MetaphAdd("J")
 			} else {
 				// e.g. "declension"
@@ -4874,12 +4910,12 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 		//german & anglicisations, e.g. 'smith' match 'schmidt', 'snider' match 'schneider'
 		//also, -sz- in slavic language altho in hungarian it is pronounced 's'
 		if ((m_current == 0) &&
-			StringAt((m_current+1), 1, "M", "N", "L")) ||
-			StringAt((m_current+1), 1, "Z") {
+			StringAt(+1, "M", "N", "L")) ||
+			StringAt(+1, "Z") {
 			MetaphAdd("S", "X")
 
 			// eat redundant 'Z'
-			if StringAt((m_current + 1), 1, "Z") {
+			if StringAt(+1, "Z") {
 				m_current += 2
 			} else {
 				m_current++
@@ -4899,29 +4935,29 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 *
 	 */
 	Encode_SC := func() bool {
-		if StringAt(m_current, 2, "SC") {
+		if StringAt(0, "SC") {
 			// exception 'viscount'
-			if StringAt((m_current - 2), 8, "VISCOUNT") {
+			if StringAt(-2, "VISCOUNT") {
 				m_current += 1
 				return true
 			}
 
 			// encode "-SC<front vowel>-"
-			if StringAt((m_current + 2), 1, "I", "E", "Y") {
+			if StringAt(+2, "I", "E", "Y") {
 				// e.g. "conscious"
-				if StringAt((m_current+2), 4, "IOUS") ||
+				if StringAt(+2, "IOUS") ||
 					// e.g. "prosciutto"
-					StringAt((m_current+2), 3, "IUT") ||
-					StringAt((m_current-4), 9, "OMNISCIEN") ||
+					StringAt(+2, "IUT") ||
+					StringAt(-4, "OMNISCIEN") ||
 					// e.g. "conscious"
-					StringAt((m_current-3), 8, "CONSCIEN", "CRESCEND", "CONSCION") ||
-					StringAt((m_current-2), 6, "FASCIS") {
+					StringAt(-3, "CONSCIEN", "CRESCEND", "CONSCION") ||
+					StringAt(-2, "FASCIS") {
 					MetaphAdd("X")
-				} else if StringAt(m_current, 7, "SCEPTIC", "SCEPSIS") ||
-					StringAt(m_current, 5, "SCIVV", "SCIRO") ||
+				} else if StringAt(0, "SCEPTIC", "SCEPSIS") ||
+					StringAt(0, "SCIVV", "SCIRO") ||
 					// commonly pronounced this way in u.s.
-					StringAt(m_current, 6, "SCIPIO") ||
-					StringAt((m_current-2), 10, "PISCITELLI") {
+					StringAt(0, "SCIPIO") ||
+					StringAt(-2, "PISCITELLI") {
 					MetaphAdd("SK")
 				} else {
 					MetaphAdd("S")
@@ -4948,13 +4984,13 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	Encode_SEA_SUI_SIER := func() bool {
 		// "nausea" by itself has => NJ as a more likely encoding. Other forms
 		// using "nause-" (see Encode_SEA()) have X or S as more familiar pronounciations
-		if (StringAt((m_current-3), 6, "NAUSEA") && ((m_current + 2) == m_last)) ||
+		if (StringAt(-3, "NAUSEA") && ((m_current + 2) == m_last)) ||
 			// e.g. "casuistry", "frasier", "hoosier"
-			StringAt((m_current-2), 5, "CASUI") ||
-			(StringAt((m_current-1), 5, "OSIER", "ASIER") &&
-				!(StringAt(0, 6, "EASIER", "") ||
-					StringAt(0, 5, "OSIER", "") ||
-					StringAt((m_current-2), 6, "ROSIER", "MOSIER"))) {
+			StringAt(-2, "CASUI") ||
+			(StringAt(-1, "OSIER", "ASIER") &&
+				!(StringAtStart("EASIER") ||
+					StringAtStart("OSIER") ||
+					StringAt(-2, "ROSIER", "MOSIER"))) {
 			MetaphAdd("J", "X")
 			AdvanceCounter(3, 1)
 			return true
@@ -4970,9 +5006,9 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 *
 	 */
 	Encode_SEA := func() bool {
-		if (StringAt(0, 4, "SEAN") && ((m_current + 3) == m_last)) ||
-			(StringAt((m_current-3), 6, "NAUSEO") &&
-				!StringAt((m_current-3), 7, "NAUSEAT")) {
+		if (StringAtStart("SEAN") && ((m_current + 3) == m_last)) ||
+			(StringAt(-3, "NAUSEO") &&
+				!StringAt(-3, "NAUSEAT")) {
 			MetaphAdd("X")
 			AdvanceCounter(3, 1)
 			return true
@@ -5014,8 +5050,8 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 
 		MetaphAdd("S")
 
-		if StringAt((m_current+1), 1, "S", "Z") &&
-			!StringAt((m_current+1), 2, "SH") {
+		if StringAt(+1, "S", "Z") &&
+			!StringAt(+1, "SH") {
 			m_current += 2
 		} else {
 			m_current++
@@ -5031,39 +5067,39 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	Encode_T_Initial := func() bool {
 		if m_current == 0 {
 			// americans usually pronounce "tzar" as "zar"
-			if StringAt((m_current + 1), 3, "SAR", "ZAR") {
+			if StringAt(+1, "SAR", "ZAR") {
 				m_current++
 				return true
 			}
 
 			// old 'École française d'Extrême-Orient' chinese pinyin where 'ts-' => 'X'
-			if ((m_length == 3) && StringAt((m_current+1), 2, "SO", "SA", "SU")) ||
-				((m_length == 4) && StringAt((m_current+1), 3, "SAO", "SAI")) ||
-				((m_length == 5) && StringAt((m_current+1), 4, "SING", "SANG")) {
+			if ((m_length == 3) && StringAt(+1, "SO", "SA", "SU")) ||
+				((m_length == 4) && StringAt(+1, "SAO", "SAI")) ||
+				((m_length == 5) && StringAt(+1, "SING", "SANG")) {
 				MetaphAdd("X")
 				AdvanceCounter(3, 2)
 				return true
 			}
 
 			// "TS<vowel>-" at start can be pronounced both with and without 'T'
-			if StringAt((m_current+1), 1, "S") && IsVowel(m_current+2) {
+			if StringAt(+1, "S") && IsVowel(m_current+2) {
 				MetaphAdd("TS", "S")
 				AdvanceCounter(3, 2)
 				return true
 			}
 
 			// e.g. "Tjaarda"
-			if StringAt((m_current + 1), 1, "J") {
+			if StringAt(+1, "J") {
 				MetaphAdd("X")
 				AdvanceCounter(3, 2)
 				return true
 			}
 
 			// cases where initial "TH-" is pronounced as T and not 0 ("th")
-			if (StringAt((m_current+1), 2, "HU") && (m_length == 3)) ||
-				StringAt((m_current+1), 3, "HAI", "HUY", "HAO") ||
-				StringAt((m_current+1), 4, "HYME", "HYMY", "HANH") ||
-				StringAt((m_current+1), 5, "HERES") {
+			if (StringAt(+1, "HU") && (m_length == 3)) ||
+				StringAt(+1, "HAI", "HUY", "HAO") ||
+				StringAt(+1, "HYME", "HYMY", "HANH") ||
+				StringAt(+1, "HERES") {
 				MetaphAdd("T")
 				AdvanceCounter(3, 2)
 				return true
@@ -5080,7 +5116,7 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 *
 	 */
 	Encode_TCH := func() bool {
-		if StringAt((m_current + 1), 2, "CH") {
+		if StringAt(+1, "CH") {
 			MetaphAdd("X")
 			m_current += 3
 			return true
@@ -5098,18 +5134,18 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 */
 	Encode_Silent_French_T := func() bool {
 		// french silent T familiar to americans
-		if ((m_current == m_last) && StringAt((m_current-4), 5, "MONET", "GENET", "CHAUT")) ||
-			StringAt((m_current-2), 9, "POTPOURRI") ||
-			StringAt((m_current-3), 9, "BOATSWAIN") ||
-			StringAt((m_current-3), 8, "MORTGAGE") ||
-			(StringAt((m_current-4), 5, "BERET", "BIDET", "FILET", "DEBUT", "DEPOT", "PINOT", "TAROT") ||
-				StringAt((m_current-5), 6, "BALLET", "BUFFET", "CACHET", "CHALET", "ESPRIT", "RAGOUT", "GOULET",
+		if ((m_current == m_last) && StringAt(-4, "MONET", "GENET", "CHAUT")) ||
+			StringAt(-2, "POTPOURRI") ||
+			StringAt(-3, "BOATSWAIN") ||
+			StringAt(-3, "MORTGAGE") ||
+			(StringAt(-4, "BERET", "BIDET", "FILET", "DEBUT", "DEPOT", "PINOT", "TAROT") ||
+				StringAt(-5, "BALLET", "BUFFET", "CACHET", "CHALET", "ESPRIT", "RAGOUT", "GOULET",
 					"CHABOT", "BENOIT") ||
-				StringAt((m_current-6), 7, "GOURMET", "BOUQUET", "CROCHET", "CROQUET", "PARFAIT", "PINCHOT",
+				StringAt(-6, "GOURMET", "BOUQUET", "CROCHET", "CROQUET", "PARFAIT", "PINCHOT",
 					"CABARET", "PARQUET", "RAPPORT", "TOUCHET", "COURBET", "DIDEROT") ||
-				StringAt((m_current-7), 8, "ENTREPOT", "CABERNET", "DUBONNET", "MASSENET", "MUSCADET", "RICOCHET", "ESCARGOT") ||
-				StringAt((m_current-8), 9, "SOBRIQUET", "CABRIOLET", "CASSOULET", "OUBRIQUET", "CAMEMBERT")) &&
-				!StringAt((m_current+1), 2, "AN", "RY", "IC", "OM", "IN") {
+				StringAt(-7, "ENTREPOT", "CABERNET", "DUBONNET", "MASSENET", "MUSCADET", "RICOCHET", "ESCARGOT") ||
+				StringAt(-8, "SOBRIQUET", "CABRIOLET", "CASSOULET", "OUBRIQUET", "CAMEMBERT")) &&
+				!StringAt(+1, "AN", "RY", "IC", "OM", "IN") {
 			m_current++
 			return true
 		}
@@ -5126,14 +5162,14 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 */
 	Encode_TUN_TUL_TUA_TUO := func() bool {
 		// e.g. "fortune", "fortunate"
-		if StringAt((m_current-3), 6, "FORTUN") ||
+		if StringAt(-3, "FORTUN") ||
 			// e.g. "capitulate"
-			(StringAt(m_current, 3, "TUL") &&
+			(StringAt(0, "TUL") &&
 				(IsVowel(m_current-1) && IsVowel(m_current+3))) ||
 			// e.g. "obituary", "barbituate"
-			StringAt((m_current-2), 5, "BITUA", "BITUE") ||
+			StringAt(-2, "BITUA", "BITUE") ||
 			// e.g. "actual"
-			((m_current > 1) && StringAt(m_current, 3, "TUA", "TUO")) {
+			((m_current > 1) && StringAt(0, "TUA", "TUO")) {
 			MetaphAdd("X", "T")
 			m_current++
 			return true
@@ -5151,20 +5187,20 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 */
 	Encode_TUE_TEU_TEOU_TUL_TIE := func() bool {
 		// 'constituent', 'pasteur'
-		if StringAt((m_current+1), 4, "UENT") ||
-			StringAt((m_current-4), 9, "RIGHTEOUS", "") ||
-			StringAt((m_current-3), 7, "STATUTE", "") ||
-			StringAt((m_current-3), 7, "AMATEUR", "") ||
+		if StringAt(+1, "UENT") ||
+			StringAt(-4, "RIGHTEOUS") ||
+			StringAt(-3, "STATUTE") ||
+			StringAt(-3, "AMATEUR") ||
 			// e.g. "blastula", "pasteur"
-			(StringAt((m_current - 1), 5, "NTULE", "NTULA", "STULE", "STULA", "STEUR")) ||
+			(StringAt(-1, "NTULE", "NTULA", "STULE", "STULA", "STEUR")) ||
 			// e.g. "statue"
-			(((m_current + 2) == m_last) && StringAt(m_current, 3, "TUE")) ||
+			(((m_current + 2) == m_last) && StringAt(0, "TUE")) ||
 			// e.g. "constituency"
-			StringAt(m_current, 5, "TUENC") ||
+			StringAt(0, "TUENC") ||
 			// e.g. "statutory"
-			StringAt((m_current-3), 8, "STATUTOR") ||
+			StringAt(-3, "STATUTOR") ||
 			// e.g. "patience"
-			(((m_current + 5) == m_last) && StringAt(m_current, 6, "TIENCE")) {
+			(((m_current + 5) == m_last) && StringAt(0, "TIENCE")) {
 			MetaphAdd("X", "T")
 			AdvanceCounter(2, 1)
 			return true
@@ -5182,14 +5218,14 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 */
 	Encode_TUR_TIU_Suffixes := func() bool {
 		// 'adventure', 'musculature'
-		if (m_current > 0) && StringAt((m_current+1), 3, "URE", "URA", "URI", "URY", "URO", "IUS") {
+		if (m_current > 0) && StringAt(+1, "URE", "URA", "URI", "URY", "URO", "IUS") {
 			// exceptions e.g. 'tessitura', mostly from romance languages
-			if (StringAt((m_current+1), 3, "URA", "URO") &&
-				//&& !StringAt((m_current + 1), 4, "URIA")
+			if (StringAt(+1, "URA", "URO") &&
+				//&& !StringAt(+1, "URIA")
 				((m_current+3) == m_last)) &&
-				!StringAt((m_current-3), 7, "VENTURA") ||
+				!StringAt(-3, "VENTURA") ||
 				// e.g. "kachaturian", "hematuria"
-				StringAt((m_current+1), 4, "URIA") {
+				StringAt(+1, "URIA") {
 				MetaphAdd("T")
 			} else {
 				MetaphAdd("X", "T")
@@ -5213,33 +5249,33 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	Encode_TI := func() bool {
 		// '-tio-', '-tia-', '-tiu-'
 		// except combining forms where T already pronounced e.g 'rooseveltian'
-		if (StringAt((m_current+1), 2, "IO") && !StringAt((m_current-1), 5, "ETIOL")) ||
-			StringAt((m_current+1), 3, "IAL") ||
-			StringAt((m_current-1), 5, "RTIUM", "ATIUM") ||
-			((StringAt((m_current+1), 3, "IAN") && (m_current > 0)) &&
-				!(StringAt((m_current-4), 8, "FAUSTIAN") ||
-					StringAt((m_current-5), 9, "PROUSTIAN") ||
-					StringAt((m_current-2), 7, "TATIANA") ||
-					(StringAt((m_current-3), 7, "KANTIAN", "GENTIAN") ||
-						StringAt((m_current-8), 12, "ROOSEVELTIAN"))) ||
+		if (StringAt(+1, "IO") && !StringAt(-1, "ETIOL")) ||
+			StringAt(+1, "IAL") ||
+			StringAt(-1, "RTIUM", "ATIUM") ||
+			((StringAt(+1, "IAN") && (m_current > 0)) &&
+				!(StringAt(-4, "FAUSTIAN") ||
+					StringAt(-5, "PROUSTIAN") ||
+					StringAt(-2, "TATIANA") ||
+					(StringAt(-3, "KANTIAN", "GENTIAN") ||
+						StringAt(-8, "ROOSEVELTIAN"))) ||
 				(((m_current + 2) == m_last) &&
-					StringAt(m_current, 3, "TIA") &&
+					StringAt(0, "TIA") &&
 					// exceptions to above rules where the pronounciation is usually X
-					!(StringAt((m_current-3), 6, "HESTIA", "MASTIA") ||
-						StringAt((m_current-2), 5, "OSTIA") ||
-						StringAt(0, 3, "TIA") ||
-						StringAt((m_current-5), 8, "IZVESTIA"))) ||
-				StringAt((m_current+1), 4, "IATE", "IATI", "IABL", "IATO", "IARY") ||
-				StringAt((m_current-5), 9, "CHRISTIAN")) {
-			if ((m_current == 2) && StringAt(0, 4, "ANTI")) ||
-				StringAt(0, 5, "PATIO", "PITIA", "DUTIA") {
+					!(StringAt(-3, "HESTIA", "MASTIA") ||
+						StringAt(-2, "OSTIA") ||
+						StringAtStart("TIA") ||
+						StringAt(-5, "IZVESTIA"))) ||
+				StringAt(+1, "IATE", "IATI", "IABL", "IATO", "IARY") ||
+				StringAt(-5, "CHRISTIAN")) {
+			if ((m_current == 2) && StringAtStart("ANTI")) ||
+				StringAtStart("PATIO", "PITIA", "DUTIA") {
 				MetaphAdd("T")
-			} else if StringAt((m_current - 4), 8, "EQUATION") {
+			} else if StringAt(-4, "EQUATION") {
 				MetaphAdd("J")
 			} else {
-				if StringAt(m_current, 4, "TION") {
+				if StringAt(0, "TION") {
 					MetaphAdd("X")
-				} else if StringAt(0, 5, "KATIA", "LATIA") {
+				} else if StringAtStart("KATIA", "LATIA") {
 					MetaphAdd("T", "X")
 				} else {
 					MetaphAdd("X", "T")
@@ -5261,7 +5297,7 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 */
 	Encode_TIENT := func() bool {
 		// e.g. 'patient'
-		if StringAt((m_current + 1), 4, "IENT") {
+		if StringAt(+1, "IENT") {
 			MetaphAdd("X", "T")
 			AdvanceCounter(3, 1)
 			return true
@@ -5278,9 +5314,9 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 */
 	Encode_TSCH := func() bool {
 		//'deutsch'
-		if StringAt(m_current, 4, "TSCH") &&
+		if StringAt(0, "TSCH") &&
 			// combining forms in german where the 'T' is pronounced seperately
-			!StringAt((m_current-3), 4, "WELT", "KLAT", "FEST") {
+			!StringAt(-3, "WELT", "KLAT", "FEST") {
 			// pronounced the same as "ch" in "chit" => X
 			MetaphAdd("X")
 			m_current += 4
@@ -5300,7 +5336,7 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 */
 	Encode_TZSCH := func() bool {
 		//'neitzsche'
-		if StringAt(m_current, 5, "TZSCH") {
+		if StringAt(0, "TZSCH") {
 			MetaphAdd("X")
 			m_current += 5
 			return true
@@ -5321,29 +5357,29 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	Encode_TH_Pronounced_Separately := func() bool {
 		//'adulthood', 'bithead', 'apartheid'
 		if ((m_current > 0) &&
-			StringAt((m_current+1), 4, "HOOD", "HEAD", "HEID", "HAND", "HILL", "HOLD",
+			StringAt(+1, "HOOD", "HEAD", "HEID", "HAND", "HILL", "HOLD",
 				"HAWK", "HEAP", "HERD", "HOLE", "HOOK", "HUNT",
 				"HUMO", "HAUS", "HOFF", "HARD") &&
-			!StringAt((m_current-3), 5, "SOUTH", "NORTH")) ||
-			StringAt((m_current+1), 5, "HOUSE", "HEART", "HASTE", "HYPNO", "HEQUE") ||
+			!StringAt(-3, "SOUTH", "NORTH")) ||
+			StringAt(+1, "HOUSE", "HEART", "HASTE", "HYPNO", "HEQUE") ||
 			// watch out for greek root "-thallic"
-			(StringAt((m_current+1), 4, "HALL") &&
+			(StringAt(+1, "HALL") &&
 				((m_current + 4) == m_last) &&
-				!StringAt((m_current-3), 5, "SOUTH", "NORTH")) ||
-			(StringAt((m_current+1), 3, "HAM") &&
+				!StringAt(-3, "SOUTH", "NORTH")) ||
+			(StringAt(+1, "HAM") &&
 				((m_current + 3) == m_last) &&
-				!(StringAt(0, 6, "GOTHAM", "WITHAM", "LATHAM") ||
-					StringAt(0, 7, "BENTHAM", "WALTHAM", "WORTHAM") ||
-					StringAt(0, 8, "GRANTHAM"))) ||
-			(StringAt((m_current+1), 5, "HATCH") &&
-				!((m_current == 0) || StringAt((m_current-2), 8, "UNTHATCH"))) ||
-			StringAt((m_current-3), 7, "WARTHOG") ||
+				!(StringAtStart("GOTHAM", "WITHAM", "LATHAM") ||
+					StringAtStart("BENTHAM", "WALTHAM", "WORTHAM") ||
+					StringAtStart("GRANTHAM"))) ||
+			(StringAt(+1, "HATCH") &&
+				!((m_current == 0) || StringAt(-2, "UNTHATCH"))) ||
+			StringAt(-3, "WARTHOG") ||
 			// and some special cases where "-TH-" is usually pronounced 'T'
-			StringAt((m_current-2), 6, "ESTHER") ||
-			StringAt((m_current-3), 6, "GOETHE") ||
-			StringAt((m_current-2), 8, "NATHALIE") {
+			StringAt(-2, "ESTHER") ||
+			StringAt(-3, "GOETHE") ||
+			StringAt(-2, "NATHALIE") {
 			// special case
-			if StringAt((m_current - 3), 7, "POSTHUM") {
+			if StringAt(-3, "POSTHUM") {
 				MetaphAdd("X")
 			} else {
 				MetaphAdd("T")
@@ -5363,8 +5399,8 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 */
 	Encode_TTH := func() bool {
 		// 'matthew' vs. 'outthink'
-		if StringAt(m_current, 3, "TTH") {
-			if StringAt((m_current - 2), 5, "MATTH") {
+		if StringAt(0, "TTH") {
+			if StringAt(-2, "MATTH") {
 				MetaphAdd("0")
 			} else {
 				MetaphAdd("T0")
@@ -5384,27 +5420,27 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 *
 	 */
 	Encode_TH := func() bool {
-		if StringAt(m_current, 2, "TH") {
+		if StringAt(0, "TH") {
 			//'-clothes-'
-			if StringAt((m_current - 3), 7, "CLOTHES") {
+			if StringAt(-3, "CLOTHES") {
 				// vowel already encoded so skip right to S
 				m_current += 3
 				return true
 			}
 
 			//special case "thomas", "thames", "beethoven" or germanic words
-			if StringAt((m_current+2), 4, "OMAS", "OMPS", "OMPK", "OMSO", "OMSE",
+			if StringAt(+2, "OMAS", "OMPS", "OMPK", "OMSO", "OMSE",
 				"AMES", "OVEN", "OFEN", "ILDA", "ILDE") ||
-				(StringAt(0, 4, "THOM") && (m_length == 4)) ||
-				(StringAt(0, 5, "THOMS") && (m_length == 5)) ||
-				StringAt(0, 4, "VAN ", "VON ") ||
-				StringAt(0, 3, "SCH") {
+				(StringAtStart("THOM") && (m_length == 4)) ||
+				(StringAtStart("THOMS") && (m_length == 5)) ||
+				StringAtStart("VAN ", "VON ") ||
+				StringAtStart("SCH") {
 				MetaphAdd("T")
 
 			} else {
 				// give an 'etymological' 2nd
 				// encoding for "smith"
-				if StringAt(0, 2, "SM") {
+				if StringAtStart("SM") {
 					MetaphAdd("0", "T")
 				} else {
 					MetaphAdd("0")
@@ -5440,7 +5476,7 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 		}
 
 		// eat redundant 'T' or 'D'
-		if StringAt((m_current + 1), 1, "T", "D") {
+		if StringAt(+1, "T", "D") {
 			m_current += 2
 		} else {
 			m_current++
@@ -5473,7 +5509,7 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	Encode_Silent_W_At_Beginning := func() bool {
 		//skip these when at start of word
 		if (m_current == 0) &&
-			StringAt(m_current, 2, "WR") {
+			StringAt(0, "WR") {
 			m_current += 1
 			return true
 		}
@@ -5493,7 +5529,7 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 */
 	Encode_WITZ_WICZ := func() bool {
 		//polish e.g. 'filipowicz'
-		if ((m_current + 3) == m_last) && StringAt(m_current, 4, "WICZ", "WITZ") {
+		if ((m_current + 3) == m_last) && StringAt(0, "WICZ", "WITZ") {
 			if m_encodeVowels {
 				if (len(m_primary) > 0) &&
 					CharAt(len(m_primary)-1) == 'A' {
@@ -5519,7 +5555,7 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 */
 	Encode_WR := func() bool {
 		//can also be in middle of word
-		if StringAt(m_current, 2, "WR") {
+		if StringAt(0, "WR") {
 			MetaphAdd("R")
 			m_current += 2
 			return true
@@ -5537,13 +5573,13 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 * @return true if germanic or slavic name
 	 */
 	Germanic_Or_Slavic_Name_Beginning_With_W := func() bool {
-		if StringAt(0, 3, "WEE", "WIX", "WAX") ||
-			StringAt(0, 4, "WOLF", "WEIS", "WAHL", "WALZ", "WEIL", "WERT",
+		if StringAtStart("WEE", "WIX", "WAX") ||
+			StringAtStart("WOLF", "WEIS", "WAHL", "WALZ", "WEIL", "WERT",
 				"WINE", "WILK", "WALT", "WOLL", "WADA", "WULF",
 				"WEHR", "WURM", "WYSE", "WENZ", "WIRT", "WOLK",
 				"WEIN", "WYSS", "WASS", "WANN", "WINT", "WINK",
 				"WILE", "WIKE", "WIER", "WELK", "WISE") ||
-			StringAt(0, 5, "WIRTH", "WIESE", "WITTE", "WENTZ", "WOLFF", "WENDT",
+			StringAtStart("WIRTH", "WIESE", "WITTE", "WENTZ", "WOLFF", "WENDT",
 				"WERTZ", "WILKE", "WALTZ", "WEISE", "WOOLF", "WERTH",
 				"WEESE", "WURTH", "WINES", "WARGO", "WIMER", "WISER",
 				"WAGER", "WILLE", "WILDS", "WAGAR", "WERTS", "WITTY",
@@ -5552,7 +5588,7 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 				"WYBLE", "WOMAC", "WILTZ", "WURST", "WOLAK", "WELKE",
 				"WEDEL", "WEIST", "WYGAN", "WUEST", "WEISZ", "WALCK",
 				"WEITZ", "WYDRA", "WANDA", "WILMA", "WEBER") ||
-			StringAt(0, 6, "WETZEL", "WEINER", "WENZEL", "WESTER", "WALLEN", "WENGER",
+			StringAtStart("WETZEL", "WEINER", "WENZEL", "WESTER", "WALLEN", "WENGER",
 				"WALLIN", "WEILER", "WIMMER", "WEIMER", "WYRICK", "WEGNER",
 				"WINNER", "WESSEL", "WILKIE", "WEIGEL", "WOJCIK", "WENDEL",
 				"WITTER", "WIENER", "WEISER", "WEXLER", "WACKER", "WISNER",
@@ -5565,7 +5601,7 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 				"WUNSCH", "WHITTY", "WAXMAN", "WILKER", "WILHAM", "WITTIG",
 				"WITMAN", "WESTRA", "WEHRLE", "WASSER", "WILLER", "WEGMAN",
 				"WARFEL", "WYNTER", "WERNER", "WAGNER", "WISSER") ||
-			StringAt(0, 7, "WISEMAN", "WINKLER", "WILHELM", "WELLMAN", "WAMPLER", "WACHTER",
+			StringAtStart("WISEMAN", "WINKLER", "WILHELM", "WELLMAN", "WAMPLER", "WACHTER",
 				"WALTHER", "WYCKOFF", "WEIDNER", "WOZNIAK", "WEILAND", "WILFONG",
 				"WIEGAND", "WILCHER", "WIELAND", "WILDMAN", "WALDMAN", "WORTMAN",
 				"WYSOCKI", "WEIDMAN", "WITTMAN", "WIDENER", "WOLFSON", "WENDELL",
@@ -5581,23 +5617,23 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 				"WOLFRAM", "WARLICK", "WEEDMAN", "WHISMAN", "WINLAND", "WEESNER",
 				"WARTHEN", "WETZLER", "WENDLER", "WALLNER", "WOLBERT", "WITTMER",
 				"WISHART", "WILLIAM") ||
-			StringAt(0, 8, "WESTPHAL", "WICKLUND", "WEISSMAN", "WESTLUND", "WOLFGANG", "WILLHITE",
+			StringAtStart("WESTPHAL", "WICKLUND", "WEISSMAN", "WESTLUND", "WOLFGANG", "WILLHITE",
 				"WEISBERG", "WALRAVEN", "WOLFGRAM", "WILHOITE", "WECHSLER", "WENDLING",
 				"WESTBERG", "WENDLAND", "WININGER", "WHISNANT", "WESTRICK", "WESTLING",
 				"WESTBURY", "WEITZMAN", "WEHMEYER", "WEINMANN", "WISNESKI", "WHELCHEL",
 				"WEISHAAR", "WAGGENER", "WALDROUP", "WESTHOFF", "WIEDEMAN", "WASINGER",
 				"WINBORNE") ||
-			StringAt(0, 9, "WHISENANT", "WEINSTEIN", "WESTERMAN", "WASSERMAN", "WITKOWSKI", "WEINTRAUB",
+			StringAtStart("WHISENANT", "WEINSTEIN", "WESTERMAN", "WASSERMAN", "WITKOWSKI", "WEINTRAUB",
 				"WINKELMAN", "WINKFIELD", "WANAMAKER", "WIECZOREK", "WIECHMANN", "WOJTOWICZ",
 				"WALKOWIAK", "WEINSTOCK", "WILLEFORD", "WARKENTIN", "WEISINGER", "WINKLEMAN",
 				"WILHEMINA") ||
-			StringAt(0, 10, "WISNIEWSKI", "WUNDERLICH", "WHISENHUNT", "WEINBERGER", "WROBLEWSKI",
+			StringAtStart("WISNIEWSKI", "WUNDERLICH", "WHISENHUNT", "WEINBERGER", "WROBLEWSKI",
 				"WAGUESPACK", "WEISGERBER", "WESTERVELT", "WESTERLUND", "WASILEWSKI",
 				"WILDERMUTH", "WESTENDORF", "WESOLOWSKI", "WEINGARTEN", "WINEBARGER",
 				"WESTERBERG", "WANNAMAKER", "WEISSINGER") ||
-			StringAt(0, 11, "WALDSCHMIDT", "WEINGARTNER", "WINEBRENNER") ||
-			StringAt(0, 12, "WOLFENBARGER") ||
-			StringAt(0, 13, "WOJCIECHOWSKI") {
+			StringAtStart("WALDSCHMIDT", "WEINGARTNER", "WINEBRENNER") ||
+			StringAtStart("WOLFENBARGER") ||
+			StringAtStart("WOJCIECHOWSKI") {
 			return true
 		}
 
@@ -5642,23 +5678,23 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 *
 	 */
 	Encode_WH := func() bool {
-		if StringAt(m_current, 2, "WH") {
+		if StringAt(0, "WH") {
 			// cases where it is pronounced as H
 			// e.g. 'who', 'whole'
 			if (CharAt(m_current+2) == 'O') &&
 				// exclude cases where it is pronounced like a vowel
-				!(StringAt((m_current+2), 4, "OOSH") ||
-					StringAt((m_current+2), 3, "OOP", "OMP", "ORL", "ORT") ||
-					StringAt((m_current+2), 2, "OA", "OP")) {
+				!(StringAt(+2, "OOSH") ||
+					StringAt(+2, "OOP", "OMP", "ORL", "ORT") ||
+					StringAt(+2, "OA", "OP")) {
 				MetaphAdd("H")
 				AdvanceCounter(3, 2)
 				return true
 			} else {
 				// combining forms, e.g. 'hollowhearted', 'rawhide'
-				if StringAt((m_current+2), 3, "IDE", "ARD", "EAD", "AWK", "ERD",
+				if StringAt(+2, "IDE", "ARD", "EAD", "AWK", "ERD",
 					"OOK", "AND", "OLE", "OOD") ||
-					StringAt((m_current+2), 4, "EART", "OUSE", "OUND") ||
-					StringAt((m_current+2), 5, "AMMER") {
+					StringAt(+2, "EART", "OUSE", "OUND") ||
+					StringAt(+2, "AMMER") {
 					MetaphAdd("H")
 					m_current += 2
 					return true
@@ -5688,10 +5724,10 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	Encode_Eastern_European_W := func() bool {
 		//Arnow should match Arnoff
 		if ((m_current == m_last) && IsVowel(m_current-1)) ||
-			StringAt((m_current-1), 5, "EWSKI", "EWSKY", "OWSKI", "OWSKY") ||
-			(StringAt(m_current, 5, "WICKI", "WACKI") && ((m_current + 4) == m_last)) ||
-			StringAt(m_current, 4, "WIAK") && ((m_current+3) == m_last) ||
-			StringAt(0, 3, "SCH") {
+			StringAt(-1, "EWSKI", "EWSKY", "OWSKI", "OWSKY") ||
+			(StringAt(0, "WICKI", "WACKI") && ((m_current + 4) == m_last)) ||
+			StringAt(0, "WIAK") && ((m_current+3) == m_last) ||
+			StringAtStart("SCH") {
 			MetaphAddExactApprox("", "V", "", "F")
 			m_current++
 			return true
@@ -5716,7 +5752,7 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 
 		// e.g. 'zimbabwe'
 		if m_encodeVowels &&
-			StringAt(m_current, 2, "WE") &&
+			StringAt(0, "WE") &&
 			((m_current + 1) == m_last) {
 			MetaphAdd("A")
 		}
@@ -5734,8 +5770,8 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 */
 	Encode_Initial_X := func() bool {
 		// current chinese pinyin spelling
-		if StringAt(0, 3, "XIA", "XIO", "XIE") ||
-			StringAt(0, 2, "XU") {
+		if StringAtStart("XIA", "XIO", "XIE") ||
+			StringAtStart("XU") {
 			MetaphAdd("X")
 			m_current++
 			return true
@@ -5759,8 +5795,8 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 */
 	Encode_Greek_X := func() bool {
 		// 'xylophone', xylem', 'xanthoma', 'xeno-'
-		if StringAt((m_current+1), 3, "YLO", "YLE", "ENO") ||
-			StringAt((m_current+1), 4, "ANTH") {
+		if StringAt(+1, "YLO", "YLE", "ENO") ||
+			StringAt(+1, "ANTH") {
 			MetaphAdd("S")
 			m_current++
 			return true
@@ -5777,15 +5813,15 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 */
 	Encode_X_Special_Cases := func() bool {
 		// 'luxury'
-		if StringAt((m_current - 2), 5, "LUXUR") {
+		if StringAt(-2, "LUXUR") {
 			MetaphAddExactApprox("GJ", "KJ")
 			m_current++
 			return true
 		}
 
 		// 'texeira' portuguese/galician name
-		if StringAt(0, 7, "TEXEIRA") ||
-			StringAt(0, 8, "TEIXEIRA") {
+		if StringAtStart("TEXEIRA") ||
+			StringAtStart("TEIXEIRA") {
 			MetaphAdd("X")
 			m_current++
 			return true
@@ -5804,8 +5840,8 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	Encode_X_To_H := func() bool {
 		// TODO: look for other mexican indian words
 		// where 'X' is usually pronounced this way
-		if StringAt((m_current-2), 6, "OAXACA") ||
-			StringAt((m_current-3), 7, "QUIXOTE") {
+		if StringAt(-2, "OAXACA") ||
+			StringAt(-3, "QUIXOTE") {
 			MetaphAdd("H")
 			m_current++
 			return true
@@ -5824,7 +5860,7 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 */
 	Encode_X_Vowel := func() bool {
 		// e.g. "sexual", "connexion" (british), "noxious"
-		if StringAt((m_current + 1), 3, "UAL", "ION", "IOU") {
+		if StringAt(+1, "UAL", "ION", "IOU") {
 			MetaphAdd("KX", "KS")
 			AdvanceCounter(3, 1)
 			return true
@@ -5843,8 +5879,8 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	Encode_French_X_Final := func() bool {
 		//french e.g. "breaux", "paix"
 		if !((m_current == m_last) &&
-			(StringAt((m_current-3), 3, "IAU", "EAU", "IEU") ||
-				StringAt((m_current-2), 2, "AI", "AU", "OU", "OI", "EU"))) {
+			(StringAt(-3, "IAU", "EAU", "IEU") ||
+				StringAt(-2, "AI", "AU", "OU", "OI", "EU"))) {
 			MetaphAdd("KS")
 		}
 
@@ -5866,9 +5902,9 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 		}
 
 		// eat redundant 'X' or other redundant cases
-		if StringAt((m_current+1), 1, "X", "Z", "S") ||
+		if StringAt(+1, "X", "Z", "S") ||
 			// e.g. "excite", "exceed"
-			StringAt((m_current+1), 2, "CI", "CE") {
+			StringAt(+1, "CI", "CE") {
 			m_current += 2
 		} else {
 			m_current++
@@ -5885,9 +5921,9 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	Encode_ZZ := func() bool {
 		// "abruzzi", 'pizza'
 		if (CharAt(m_current+1) == 'Z') &&
-			((StringAt((m_current+2), 1, "I", "O", "A") &&
+			((StringAt(+2, "I", "O", "A") &&
 				((m_current + 2) == m_last)) ||
-				StringAt((m_current-2), 9, "MOZZARELL", "PIZZICATO", "PUZZONLAN")) {
+				StringAt(-2, "MOZZARELL", "PIZZICATO", "PUZZONLAN")) {
 			MetaphAdd("TS", "S")
 			m_current += 2
 			return true
@@ -5903,13 +5939,13 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 *
 	 */
 	Encode_ZU_ZIER_ZS := func() bool {
-		if ((m_current == 1) && StringAt((m_current-1), 4, "AZUR")) ||
-			(StringAt(m_current, 4, "ZIER") &&
-				!StringAt((m_current-2), 6, "VIZIER")) ||
-			StringAt(m_current, 3, "ZSA") {
+		if ((m_current == 1) && StringAt(-1, "AZUR")) ||
+			(StringAt(0, "ZIER") &&
+				!StringAt(-2, "VIZIER")) ||
+			StringAt(0, "ZSA") {
 			MetaphAdd("J", "S")
 
-			if StringAt(m_current, 3, "ZSA") {
+			if StringAt(0, "ZSA") {
 				m_current += 2
 			} else {
 				m_current++
@@ -5928,8 +5964,8 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 *
 	 */
 	Encode_French_EZ := func() bool {
-		if ((m_current == 3) && StringAt((m_current-3), 4, "CHEZ")) ||
-			StringAt((m_current-5), 6, "RENDEZ") {
+		if ((m_current == 3) && StringAt(-3, "CHEZ")) ||
+			StringAt(-5, "RENDEZ") {
 			m_current++
 			return true
 		}
@@ -5945,17 +5981,17 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	 *
 	 */
 	Encode_German_Z := func() bool {
-		if ((m_current == 2) && ((m_current + 1) == m_last) && StringAt((m_current-2), 4, "NAZI")) ||
-			StringAt((m_current-2), 6, "NAZIFY", "MOZART") ||
-			StringAt((m_current-3), 4, "HOLZ", "HERZ", "MERZ", "FITZ") ||
-			(StringAt((m_current-3), 4, "GANZ") && !IsVowel(m_current+1)) ||
-			StringAt((m_current-4), 5, "STOLZ", "PRINZ") ||
-			StringAt((m_current-4), 7, "VENEZIA") ||
-			StringAt((m_current-3), 6, "HERZOG") ||
+		if ((m_current == 2) && ((m_current + 1) == m_last) && StringAt(-2, "NAZI")) ||
+			StringAt(-2, "NAZIFY", "MOZART") ||
+			StringAt(-3, "HOLZ", "HERZ", "MERZ", "FITZ") ||
+			(StringAt(-3, "GANZ") && !IsVowel(m_current+1)) ||
+			StringAt(-4, "STOLZ", "PRINZ") ||
+			StringAt(-4, "VENEZIA") ||
+			StringAt(-3, "HERZOG") ||
 			// german words beginning with "sch-" but not schlimazel, schmooze
-			(strings.Contains(string(m_inWord), "SCH") && !(StringAt((m_last - 2), 3, "IZE", "OZE", "ZEL"))) ||
-			((m_current > 0) && StringAt(m_current, 4, "ZEIT")) ||
-			StringAt((m_current-3), 4, "WEIZ") {
+			(strings.Contains(string(m_inWord), "SCH") && !(StringAtEnd("IZE", "OZE", "ZEL"))) ||
+			((m_current > 0) && StringAt(0, "ZEIT")) ||
+			StringAt(-3, "WEIZ") {
 			if (m_current > 0) && CharAt(m_current-1) == 'T' {
 				MetaphAdd("S")
 			} else {
@@ -6035,7 +6071,6 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 			if m_current >= m_length {
 				break
 			}
-
 			switch CharAt(m_current) {
 			case 'B':
 				Encode_B()

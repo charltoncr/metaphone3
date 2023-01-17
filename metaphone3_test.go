@@ -24,7 +24,7 @@ import (
 	"testing"
 )
 
-// $Id: metaphone3_test.go,v 1.11 2023-01-14 13:54:52-05 ron Exp $
+// $Id: metaphone3_test.go,v 1.12 2023-01-17 11:07:16-05 ron Exp $
 
 const maxlength = 6
 
