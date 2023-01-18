@@ -7,6 +7,14 @@
 // spelling checkers.  See the comments near the top of metaphone3.go for
 // a detailed explanation of how Metaphone3 works.
 //
+// Typical use:
+//
+//	m := metaphone3.NewMetaphone3(4)
+//	main, alternate := m.Encode("knewmoanya")
+//
+// Convenience functions simplify the use of metaphone3, eliminating the
+// direct use of NewMetaphone3 and Encode.
+//
 // Convenience function NewMetaphMapFromFile returns a MetaphMap made
 // from a file containing a word list, and a maximum length for the
 // Metaphone3 return values.
