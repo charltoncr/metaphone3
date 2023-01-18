@@ -2,7 +2,7 @@
 // on 2023-01-05 from the original Java code at
 // https://github.com/OpenRefine/OpenRefine/blob/master/main/src/com/google/refine/clustering/binning/Metaphone3.java
 //
-// $Id: metaphone3.go,v 3.3 2023-01-18 09:41:33-05 ron Exp $
+// $Id: metaphone3.go,v 3.4 2023-01-18 11:34:48-05 ron Exp $
 //
 // This open source Go file is based on Metaphone3.java 2.1.3 that is
 // copyright 2010 by Laurence Philips, and is also open source.
@@ -220,19 +220,6 @@ func (m *Metaphone3) SetMaxLength(max int) {
 	m.maxlen = max
 }
 
-// Encode returns a primary and alternate encoding for word.  It honors
-// the values set by SetEncodeVowels and SetEncodeExact, as well as by
-// SetMaxLength.  The encodings will be the same for words that sound similar.
-func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
-	m_encodeVowels = m.doVowels
-	m_encodeExact = m.doExact
-	m_metaphLength = m.maxlen
-	m_inWord = []rune(strings.ToUpper(word))
-	m_length = len(m_inWord)
-	encode()
-	return string(m_primary), string(m_secondary)
-}
-
 var (
 	/** Length of word sent in to be encoded, as
 	* measured at beginning of encoding. */
@@ -268,6 +255,21 @@ var (
 	/** Flag that an AL inversion has already been done. */
 	flag_AL_inversion bool
 )
+
+// Encode returns main and alternate keys for word.  It honors
+// the values set by SetEncodeVowels, SetEncodeExact and
+// SetMaxLength.  The keys will match for words that sound similar.
+// Either key can match either of the other word's keys for similar
+// sounding words.
+func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
+	m_encodeVowels = m.doVowels
+	m_encodeExact = m.doExact
+	m_metaphLength = m.maxlen
+	m_inWord = []rune(strings.ToUpper(word))
+	m_length = len(m_inWord)
+	encode()
+	return string(m_primary), string(m_secondary)
+}
 
 // metaphAdd adds a string to primary and secondary.  Call it with 1 or 2
 // arguments.  The first argument is appended to primary (and to
