@@ -2,7 +2,7 @@
 // on 2023-01-05 from the original Java code at
 // https://github.com/OpenRefine/OpenRefine/blob/master/main/src/com/google/refine/clustering/binning/Metaphone3.java
 //
-// $Id: metaphone3.go,v 3.4 2023-01-18 11:34:48-05 ron Exp $
+// $Id: metaphone3.go,v 3.5 2023-01-18 11:43:20-05 ron Exp $
 //
 // This open source Go file is based on Metaphone3.java 2.1.3 that is
 // copyright 2010 by Laurence Philips, and is also open source.
@@ -118,59 +118,6 @@ FOR DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES RESULTING FROM USE
 OF THIS SOFTWARE.
 
 @author Lawrence Philips
-
-Metaphone 3 is designed to return an <i>approximate</i> phonetic key (and an alternate
-approximate phonetic key when appropriate) that should be the same for English
-words, and most names familiar in the United States, that are pronounced "similarly".
-The key value is <i>not</i> intended to be an exact phonetic, or even phonemic,
-representation of the word. This is because a certain degree of 'fuzziness' has
-proven to be useful in compensating for variations in pronunciation, as well as
-misheard pronunciations. For example, although Americans are not usually aware of it,
-the letter 's' is normally pronounced 'z' at the end of words such as "sounds".
-
-The 'approximate' aspect of the encoding is implemented according to the following rules:
-
-(1) All vowels are encoded to the same value - 'A'. If the parameter encodeVowels
-is set to false, only *initial* vowels will be encoded at all. If encodeVowels is set
-to true, 'A' will be encoded at all places in the word that any vowels are normally
-pronounced. 'W' as well as 'Y' are treated as vowels. Although there are differences in
-the pronunciation of 'W' and 'Y' in different circumstances that lead to their being
-classified as vowels under some circumstances and as consonants in others, for the purposes
-of the 'fuzziness' component of the Soundex and Metaphone family of algorithms they will
-be always be treated here as vowels.
-
-(2) Voiced and un-voiced consonant pairs are mapped to the same encoded value. This
-means that:
-'D' and 'T' -> 'T'
-'B' and 'P' -> 'P'
-'G' and 'K' -> 'K'
-'Z' and 'S' -> 'S'
-'V' and 'F' -> 'F'
-
-- In addition to the above voiced/unvoiced rules, 'CH' and 'SH' -> 'X', where 'X'
-represents the "-SH-" and "-CH-" sounds in Metaphone 3 encoding.
-
-- Also, the sound that is spelled as "TH" in English is encoded to '0' (zero symbol). (Although
-americans are not usually aware of it, "TH" is pronounced in a voiced (e.g. "that") as
-well as an unvoiced (e.g. "theater") form, which are naturally mapped to the same encoding.)
-
-In the "Exact" encoding, voiced/unvoiced pairs are <i>not</i> mapped to the same encoding, except
-for the voiced and unvoiced versions of 'TH', sounds such as 'CH' and 'SH', and for 'S' and 'Z',
-so that the words whose metaph keys match will in fact be closer in pronunciation that with the
-more approximate setting. Keep in mind that encoding settings for search strings should always
-be exactly the same as the encoding settings of the stored metaph keys in your database!
-Because of the considerably increased accuracy of Metaphone3, it is now possible to use this
-setting and have a very good chance of getting a correct encoding.
-
-In the Encode Vowels encoding, all non-initial vowels and diphthongs will be encoded to
-'A', and there will only be one such vowel encoding character between any two consonants.
-It turns out that there are some surprising wrinkles to encoding non-initial vowels in
-practice, pre-eminently in inversions between spelling and pronunciation such as e.g.
-"wrinkle" => 'RANKAL', where the last two sounds are inverted when spelled.
-
-The encodings in this version of Metaphone 3 are according to pronunciations common in the
-United States. This means that they will be inaccurate for consonant pronunciations that
-are different in the United Kingdom, for example "tube" -> "CHOOBE" -> XAP rather than american TAP.
 */
 // End of Metaphone3.java copyright and header comments.
 
