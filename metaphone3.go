@@ -2,7 +2,7 @@
 // on 2023-01-05 from the original Java code at
 // https://github.com/OpenRefine/OpenRefine/blob/master/main/src/com/google/refine/clustering/binning/Metaphone3.java
 //
-// $Id: metaphone3.go,v 3.8 2023-01-18 11:57:49-05 ron Exp $
+// $Id: metaphone3.go,v 3.16 2023-01-18 15:50:02-05 ron Exp $
 //
 // This open source Go file is based on Metaphone3.java 2.1.3 that is
 // copyright 2010 by Laurence Philips, and is also open source.
@@ -95,7 +95,7 @@ names common in the United States, and non-English words found in publications i
 with an emphasis on words that are commonly mispronounced, prepared by the Moby Words website,
 but with the Moby Words 'phonetic' encodings algorithmically mapped to Double Metaphone encodings.
 Metaphone3 increases the accuracy of encoding of english words, common names, and non-English
-words found in american publications from the 89% for Double Metaphone, to over 98%.
+words found in American publications from the 89% for Double Metaphone, to over 98%.
 
 DISCLAIMER:
 Anthropomorphic Software LLC claims only that Metaphone 3 will return correct encodings,
@@ -125,7 +125,7 @@ words, and most names familiar in the United States, that are pronounced "simila
 The key value is <i>not</i> intended to be an exact phonetic, or even phonemic,
 representation of the word. This is because a certain degree of 'fuzziness' has
 proven to be useful in compensating for variations in pronunciation, as well as
-misheard pronunciations. For example, although americans are not usually aware of it,
+misheard pronunciations. For example, although Americans are not usually aware of it,
 the letter 's' is normally pronounced 'z' at the end of words such as "sounds".
 
 The 'approximate' aspect of the encoding is implemented according to the following rules:
@@ -151,7 +151,7 @@ means that:
 represents the "-SH-" and "-CH-" sounds in Metaphone 3 encoding.
 
 - Also, the sound that is spelled as "TH" in English is encoded to '0' (zero symbol). (Although
-americans are not usually aware of it, "TH" is pronounced in a voiced (e.g. "that") as
+Americans are not usually aware of it, "TH" is pronounced in a voiced (e.g. "that") as
 well as an unvoiced (e.g. "theater") form, which are naturally mapped to the same encoding.)
 
 In the "Exact" encoding, voiced/unvoiced pairs are <i>not</i> mapped to the same encoding, except
@@ -170,7 +170,7 @@ practice, pre-eminently in inversions between spelling and pronunciation such as
 
 The encodings in this version of Metaphone 3 are according to pronunciations common in the
 United States. This means that they will be inaccurate for consonant pronunciations that
-are different in the United Kingdom, for example "tube" -> "CHOOBE" -> XAP rather than american TAP.
+are different in the United Kingdom, for example "tube" -> "CHOOBE" -> XAP rather than American TAP.
 */
 // End of Metaphone3.java copyright and header comments.
 
@@ -321,27 +321,21 @@ func metaphAdd(s ...string) {
  *
  */
 func metaphAddExactApprox(s ...string) {
+	// args are either mainExact/main or mainExact/altExact/main/alt.
 	if len(s) != 2 && len(s) != 4 {
 		panic("metaphAddExactApprox requires 2 or 4 arguments")
 	}
-	var mainExact, altExact, main, alt string
 	if len(s) == 2 {
-		mainExact = s[0]
-		main = s[1]
 		if m_encodeExact {
-			metaphAdd(mainExact)
+			metaphAdd(s[0])
 		} else {
-			metaphAdd(main)
+			metaphAdd(s[1])
 		}
 	} else {
-		mainExact = s[0]
-		altExact = s[1]
-		main = s[2]
-		alt = s[3]
 		if m_encodeExact {
-			metaphAdd(mainExact, altExact)
+			metaphAdd(s[0], s[1])
 		} else {
-			metaphAdd(main, alt)
+			metaphAdd(s[2], s[3])
 		}
 	}
 }
@@ -361,57 +355,63 @@ func charAt(at int) rune {
 	return m_inWord[at]
 }
 
-// stringAtPos determines if any of a list of string arguments appear
-// in m_inWord at position pos.
+// stringAtPos determines if any of the elements in s appear
+// in m_inWord at position pos.  Elements in s must be in order by
+// increasing length, shortest first.
 func stringAtPos(pos int, s ...string) bool {
 	if len(s) > 0 && pos >= 0 {
 	forOuterLoop:
 		for _, str := range s {
-			if (pos + len(str)) <= m_length {
-				j := pos
-				for _, r := range str {
-					if r != m_inWord[j] {
-						continue forOuterLoop
-					}
-					j++
-				}
-				return true
+			if (pos + len(str)) > m_length {
+				break
 			}
+			j := pos
+			for _, r := range str {
+				if r != m_inWord[j] {
+					continue forOuterLoop
+				}
+				j++
+			}
+			return true
 		}
 	}
 	return false
 }
 
-// stringAt determines if any of a list of string arguments appear
-// in m_inWord at m_current+index.
+// stringAt determines if any of the elements in s appear
+// in m_inWord at m_current+index.  Elements in s must be in order by
+// increasing length, shortest first.
 func stringAt(index int, s ...string) bool {
 	start := m_current + index
 	return stringAtPos(start, s...)
 }
 
-// stringAtStart determines if any of a list of string arguments appear
-// in m_inWord at its beginning.
+// stringAtStart determines if any of the elements in s appear
+// in m_inWord at its beginning.  Elements in s must be in order by
+// increasing length, shortest first.
 func stringAtStart(s ...string) bool {
 	return stringAtPos(0, s...)
 }
 
-// stringAtEnd determines if any of a list of string arguments appear
-// in m_inWord at its end.
+// stringAtEnd determines if any of the elements in s appear
+// in m_inWord at its end.  Elements in s must be in order by
+// increasing length, shortest first.
 func stringAtEnd(s ...string) bool {
 	if len(s) > 0 {
 	forOuterLoop:
 		for _, str := range s {
 			start := m_length - len(str)
-			if start >= 0 {
-				j := start
-				for _, r := range str {
-					if r != m_inWord[j] {
-						continue forOuterLoop
-					}
-					j++
-				}
-				return true
+			if start < 0 {
+				break
 			}
+			j := start
+			for _, r := range str {
+				if r != m_inWord[j] {
+					continue forOuterLoop
+				}
+				j++
+			}
+			return true
 		}
 	}
 	return false
@@ -5594,71 +5594,67 @@ func encodeWR() bool {
  * @return true if germanic or slavic name
  */
 func germanicOrSlavicNameBeginningWithW() bool {
-	if stringAtStart("WEE", "WIX", "WAX") ||
-		stringAtStart("WOLF", "WEIS", "WAHL", "WALZ", "WEIL", "WERT",
-			"WINE", "WILK", "WALT", "WOLL", "WADA", "WULF",
-			"WEHR", "WURM", "WYSE", "WENZ", "WIRT", "WOLK",
-			"WEIN", "WYSS", "WASS", "WANN", "WINT", "WINK",
-			"WILE", "WIKE", "WIER", "WELK", "WISE") ||
-		stringAtStart("WIRTH", "WIESE", "WITTE", "WENTZ", "WOLFF", "WENDT",
-			"WERTZ", "WILKE", "WALTZ", "WEISE", "WOOLF", "WERTH",
-			"WEESE", "WURTH", "WINES", "WARGO", "WIMER", "WISER",
-			"WAGER", "WILLE", "WILDS", "WAGAR", "WERTS", "WITTY",
-			"WIENS", "WIEBE", "WIRTZ", "WYMER", "WULFF", "WIBLE",
-			"WINER", "WIEST", "WALKO", "WALLA", "WEBRE", "WEYER",
-			"WYBLE", "WOMAC", "WILTZ", "WURST", "WOLAK", "WELKE",
-			"WEDEL", "WEIST", "WYGAN", "WUEST", "WEISZ", "WALCK",
-			"WEITZ", "WYDRA", "WANDA", "WILMA", "WEBER") ||
-		stringAtStart("WETZEL", "WEINER", "WENZEL", "WESTER", "WALLEN", "WENGER",
-			"WALLIN", "WEILER", "WIMMER", "WEIMER", "WYRICK", "WEGNER",
-			"WINNER", "WESSEL", "WILKIE", "WEIGEL", "WOJCIK", "WENDEL",
-			"WITTER", "WIENER", "WEISER", "WEXLER", "WACKER", "WISNER",
-			"WITMER", "WINKLE", "WELTER", "WIDMER", "WITTEN", "WINDLE",
-			"WASHER", "WOLTER", "WILKEY", "WIDNER", "WARMAN", "WEYANT",
-			"WEIBEL", "WANNER", "WILKEN", "WILTSE", "WARNKE", "WALSER",
-			"WEIKEL", "WESNER", "WITZEL", "WROBEL", "WAGNON", "WINANS",
-			"WENNER", "WOLKEN", "WILNER", "WYSONG", "WYCOFF", "WUNDER",
-			"WINKEL", "WIDMAN", "WELSCH", "WEHNER", "WEIGLE", "WETTER",
-			"WUNSCH", "WHITTY", "WAXMAN", "WILKER", "WILHAM", "WITTIG",
-			"WITMAN", "WESTRA", "WEHRLE", "WASSER", "WILLER", "WEGMAN",
-			"WARFEL", "WYNTER", "WERNER", "WAGNER", "WISSER") ||
-		stringAtStart("WISEMAN", "WINKLER", "WILHELM", "WELLMAN", "WAMPLER", "WACHTER",
-			"WALTHER", "WYCKOFF", "WEIDNER", "WOZNIAK", "WEILAND", "WILFONG",
-			"WIEGAND", "WILCHER", "WIELAND", "WILDMAN", "WALDMAN", "WORTMAN",
-			"WYSOCKI", "WEIDMAN", "WITTMAN", "WIDENER", "WOLFSON", "WENDELL",
-			"WEITZEL", "WILLMAN", "WALDRUP", "WALTMAN", "WALCZAK", "WEIGAND",
-			"WESSELS", "WIDEMAN", "WOLTERS", "WIREMAN", "WILHOIT", "WEGENER",
-			"WOTRING", "WINGERT", "WIESNER", "WAYMIRE", "WHETZEL", "WENTZEL",
-			"WINEGAR", "WESTMAN", "WYNKOOP", "WALLICK", "WURSTER", "WINBUSH",
-			"WILBERT", "WALLACH", "WYNKOOP", "WALLICK", "WURSTER", "WINBUSH",
-			"WILBERT", "WALLACH", "WEISSER", "WEISNER", "WINDERS", "WILLMON",
-			"WILLEMS", "WIERSMA", "WACHTEL", "WARNICK", "WEIDLER", "WALTRIP",
-			"WHETSEL", "WHELESS", "WELCHER", "WALBORN", "WILLSEY", "WEINMAN",
-			"WAGAMAN", "WOMMACK", "WINGLER", "WINKLES", "WIEDMAN", "WHITNER",
-			"WOLFRAM", "WARLICK", "WEEDMAN", "WHISMAN", "WINLAND", "WEESNER",
-			"WARTHEN", "WETZLER", "WENDLER", "WALLNER", "WOLBERT", "WITTMER",
-			"WISHART", "WILLIAM") ||
-		stringAtStart("WESTPHAL", "WICKLUND", "WEISSMAN", "WESTLUND", "WOLFGANG", "WILLHITE",
-			"WEISBERG", "WALRAVEN", "WOLFGRAM", "WILHOITE", "WECHSLER", "WENDLING",
-			"WESTBERG", "WENDLAND", "WININGER", "WHISNANT", "WESTRICK", "WESTLING",
-			"WESTBURY", "WEITZMAN", "WEHMEYER", "WEINMANN", "WISNESKI", "WHELCHEL",
-			"WEISHAAR", "WAGGENER", "WALDROUP", "WESTHOFF", "WIEDEMAN", "WASINGER",
-			"WINBORNE") ||
-		stringAtStart("WHISENANT", "WEINSTEIN", "WESTERMAN", "WASSERMAN", "WITKOWSKI", "WEINTRAUB",
-			"WINKELMAN", "WINKFIELD", "WANAMAKER", "WIECZOREK", "WIECHMANN", "WOJTOWICZ",
-			"WALKOWIAK", "WEINSTOCK", "WILLEFORD", "WARKENTIN", "WEISINGER", "WINKLEMAN",
-			"WILHEMINA") ||
-		stringAtStart("WISNIEWSKI", "WUNDERLICH", "WHISENHUNT", "WEINBERGER", "WROBLEWSKI",
-			"WAGUESPACK", "WEISGERBER", "WESTERVELT", "WESTERLUND", "WASILEWSKI",
-			"WILDERMUTH", "WESTENDORF", "WESOLOWSKI", "WEINGARTEN", "WINEBARGER",
-			"WESTERBERG", "WANNAMAKER", "WEISSINGER") ||
-		stringAtStart("WALDSCHMIDT", "WEINGARTNER", "WINEBRENNER") ||
-		stringAtStart("WOLFENBARGER") ||
-		stringAtStart("WOJCIECHOWSKI") {
-		return true
-	}
-
-	return false
+	return stringAtStart("WEE", "WIX", "WAX",
+		"WOLF", "WEIS", "WAHL", "WALZ", "WEIL", "WERT",
+		"WINE", "WILK", "WALT", "WOLL", "WADA", "WULF",
+		"WEHR", "WURM", "WYSE", "WENZ", "WIRT", "WOLK",
+		"WEIN", "WYSS", "WASS", "WANN", "WINT", "WINK",
+		"WILE", "WIKE", "WIER", "WELK", "WISE",
+		"WIRTH", "WIESE", "WITTE", "WENTZ", "WOLFF", "WENDT",
+		"WERTZ", "WILKE", "WALTZ", "WEISE", "WOOLF", "WERTH",
+		"WEESE", "WURTH", "WINES", "WARGO", "WIMER", "WISER",
+		"WAGER", "WILLE", "WILDS", "WAGAR", "WERTS", "WITTY",
+		"WIENS", "WIEBE", "WIRTZ", "WYMER", "WULFF", "WIBLE",
+		"WINER", "WIEST", "WALKO", "WALLA", "WEBRE", "WEYER",
+		"WYBLE", "WOMAC", "WILTZ", "WURST", "WOLAK", "WELKE",
+		"WEDEL", "WEIST", "WYGAN", "WUEST", "WEISZ", "WALCK",
+		"WEITZ", "WYDRA", "WANDA", "WILMA", "WEBER",
+		"WETZEL", "WEINER", "WENZEL", "WESTER", "WALLEN", "WENGER",
+		"WALLIN", "WEILER", "WIMMER", "WEIMER", "WYRICK", "WEGNER",
+		"WINNER", "WESSEL", "WILKIE", "WEIGEL", "WOJCIK", "WENDEL",
+		"WITTER", "WIENER", "WEISER", "WEXLER", "WACKER", "WISNER",
+		"WITMER", "WINKLE", "WELTER", "WIDMER", "WITTEN", "WINDLE",
+		"WASHER", "WOLTER", "WILKEY", "WIDNER", "WARMAN", "WEYANT",
+		"WEIBEL", "WANNER", "WILKEN", "WILTSE", "WARNKE", "WALSER",
+		"WEIKEL", "WESNER", "WITZEL", "WROBEL", "WAGNON", "WINANS",
+		"WENNER", "WOLKEN", "WILNER", "WYSONG", "WYCOFF", "WUNDER",
+		"WINKEL", "WIDMAN", "WELSCH", "WEHNER", "WEIGLE", "WETTER",
+		"WUNSCH", "WHITTY", "WAXMAN", "WILKER", "WILHAM", "WITTIG",
+		"WITMAN", "WESTRA", "WEHRLE", "WASSER", "WILLER", "WEGMAN",
+		"WARFEL", "WYNTER", "WERNER", "WAGNER", "WISSER",
+		"WISEMAN", "WINKLER", "WILHELM", "WELLMAN", "WAMPLER", "WACHTER",
+		"WALTHER", "WYCKOFF", "WEIDNER", "WOZNIAK", "WEILAND", "WILFONG",
+		"WIEGAND", "WILCHER", "WIELAND", "WILDMAN", "WALDMAN", "WORTMAN",
+		"WYSOCKI", "WEIDMAN", "WITTMAN", "WIDENER", "WOLFSON", "WENDELL",
+		"WEITZEL", "WILLMAN", "WALDRUP", "WALTMAN", "WALCZAK", "WEIGAND",
+		"WESSELS", "WIDEMAN", "WOLTERS", "WIREMAN", "WILHOIT", "WEGENER",
+		"WOTRING", "WINGERT", "WIESNER", "WAYMIRE", "WHETZEL", "WENTZEL",
+		"WINEGAR", "WESTMAN", "WYNKOOP", "WALLICK", "WURSTER", "WINBUSH",
+		"WILBERT", "WALLACH", "WYNKOOP", "WALLICK", "WURSTER", "WINBUSH",
+		"WILBERT", "WALLACH", "WEISSER", "WEISNER", "WINDERS", "WILLMON",
+		"WILLEMS", "WIERSMA", "WACHTEL", "WARNICK", "WEIDLER", "WALTRIP",
+		"WHETSEL", "WHELESS", "WELCHER", "WALBORN", "WILLSEY", "WEINMAN",
+		"WAGAMAN", "WOMMACK", "WINGLER", "WINKLES", "WIEDMAN", "WHITNER",
+		"WOLFRAM", "WARLICK", "WEEDMAN", "WHISMAN", "WINLAND", "WEESNER",
+		"WARTHEN", "WETZLER", "WENDLER", "WALLNER", "WOLBERT", "WITTMER",
+		"WISHART", "WILLIAM",
+		"WESTPHAL", "WICKLUND", "WEISSMAN", "WESTLUND", "WOLFGANG", "WILLHITE",
+		"WEISBERG", "WALRAVEN", "WOLFGRAM", "WILHOITE", "WECHSLER", "WENDLING",
+		"WESTBERG", "WENDLAND", "WININGER", "WHISNANT", "WESTRICK", "WESTLING",
+		"WESTBURY", "WEITZMAN", "WEHMEYER", "WEINMANN", "WISNESKI", "WHELCHEL",
+		"WEISHAAR", "WAGGENER", "WALDROUP", "WESTHOFF", "WIEDEMAN", "WASINGER",
+		"WINBORNE",
+		"WHISENANT", "WEINSTEIN", "WESTERMAN", "WASSERMAN", "WITKOWSKI", "WEINTRAUB",
+		"WINKELMAN", "WINKFIELD", "WANAMAKER", "WIECZOREK", "WIECHMANN", "WOJTOWICZ",
+		"WALKOWIAK", "WEINSTOCK", "WILLEFORD", "WARKENTIN", "WEISINGER", "WINKLEMAN",
+		"WILHEMINA",
+		"WISNIEWSKI", "WUNDERLICH", "WHISENHUNT", "WEINBERGER", "WROBLEWSKI",
+		"WAGUESPACK", "WEISGERBER", "WESTERVELT", "WESTERLUND", "WASILEWSKI",
+		"WILDERMUTH", "WESTENDORF", "WESOLOWSKI", "WEINGARTEN", "WINEBARGER",
+		"WESTERBERG", "WANNAMAKER", "WEISSINGER",
+		"WALDSCHMIDT", "WEINGARTNER", "WINEBRENNER",
+		"WOLFENBARGER",
+		"WOJCIECHOWSKI")
 }
 
 /**
