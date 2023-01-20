@@ -1,5 +1,5 @@
 <!-- title: Metaphone3 Read Me -->
-<!-- $Id: README.md,v 1.16 2023-01-20 09:07:28-05 ron Exp $ -->
+<!-- $Id: README.md,v 1.17 2023-01-20 09:45:15-05 ron Exp $ -->
 
 # Metaphone3
 
@@ -18,16 +18,13 @@ Metaphone (1999) and Metaphone (1990).
 - func (m *Metaphone3) SetMaxLength(max int)
 - func (m *Metaphone3) Encode(word string) (key1, key2 string)
 
-**NewMetaphone3** returns a new metaphone3 instance with its own maximum key
-length. Both encodeVowels and encodeExact default to false.
-
-**Encode** returns main and alternate keys for a word.  Keys will match for similar sounding words.
-
-**SetEncodeVowels** determines whether vowels after the first character are encoded.
-
-**SetEncodeExact** determines whether consonants are encoded more precisely.
-
-**SetMaxLength** sets the the maximum allowed length for metaphone3 keys.
+| FUNCTION | DESCRIPTION |
+| --- | --- |
+| **NewMetaphone3** | Returns a new metaphone3 instance with its own maximum key length. Both encodeVowels and encodeExact default to false. |
+| **Encode** | Returns main and alternate keys for a word.  Keys will match for similar sounding words. |
+| **SetEncodeVowels** | Determines whether vowels after the first character are encoded. |
+| **SetEncodeExact** | Determines whether consonants are encoded more precisely. |
+| **SetMaxLength** | Sets the the maximum allowed length for metaphone3 keys. |
 
 Example use:
 
@@ -61,25 +58,15 @@ in the map that match a given word/misspelling.  See the example below.
 - func (metaph *MetaphMap) MatchWord(word string) (output []string)
 - func (metaph *MetaphMap) Len() int
 
-**NewMetaphMap** returns a MetaphMap made from a wordlist and a maximum length
-for the metaphone3 keys.
-
-**NewMetaphMapFromFile** returns a MetaphMap made from a word list file and
-a maximum length for the metaphone3 keys.
-
-**NewMetaphMapFromFileExact** works like NewMetaphMapFromFile but allows
-control of how vowels and consonants are encoded.
-
-**AddWordsToMap** adds words from a word list to an existing MetaphMap.
-This is useful for combining word lists, for example, a general word list and
-a user's personal word list.
-
-**AddWordsFromFile** adds words from a file to an existing MetaphMap.
-
-**MatchWord** returns all words in a MetaphMap that sound like word. Case in
-word is ignored, as are non-alphabetic characters.
-
-**Len** returns the number of sounds-alike keys in the metaph map.
+| FUNCTION/METHOD | DESCRIPTION |
+| --- | --- |
+| **NewMetaphMap** | Returns a MetaphMap made from a wordlist and a maximum length for the metaphone3 keys. |
+| **NewMetaphMapFromFile** | Returns a MetaphMap made from a word list file and a maximum length for the metaphone3 keys. |
+| **NewMetaphMapFromFileExact** | Works like NewMetaphMapFromFile but allows control of how vowels and consonants are encoded. |
+| **AddWordsToMap** | Adds words from a word list to an existing MetaphMap. This is useful for combining word lists, for example, a general word list and a user's personal word list. |
+| **AddWordsFromFile** | Adds words from a file to an existing MetaphMap. |
+| **MatchWord** | Returns all words in a MetaphMap that sound like word. Case in word is ignored, as are non-alphabetic characters. |
+| **Len** | Returns the number of sounds-alike keys in the metaph map. |
 
 Example use:
 
