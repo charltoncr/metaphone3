@@ -24,7 +24,7 @@ import (
 	"testing"
 )
 
-// $Id: metaphone3_test.go,v 1.12 2023-01-17 11:07:16-05 ron Exp $
+// $Id: metaphone3_test.go,v 1.14 2023-01-20 03:13:03-05 ron Exp $
 
 const maxlength = 6
 
@@ -92,10 +92,46 @@ func TestConvenience(t *testing.T) {
 	}
 }
 
-func BenchmarkMetaphone3(b *testing.B) {
+func BenchmarkEncode(b *testing.B) {
 	met := NewMetaphone3(6)
+	met.SetMaxLength(52)
+	str := "abcdefghijklmnopqrstuvwxyz"
+	b.SetBytes(26)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		met.Encode("knewmoanya")
+		met.Encode(str)
+	}
+}
+func BenchmarkDoFile(b *testing.B) {
+	words, err := readFileLines("testInputData.txt.gz")
+	var size int
+	for _, word := range words {
+		size += len(word)
+	}
+	if err != nil {
+		b.Fatalf("%v", err)
+	}
+	met := NewMetaphone3(maxlength)
+	b.SetBytes(int64(size))
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		for _, word := range words {
+			met.Encode(word)
+		}
+	}
+}
+func BenchmarkNewMetaphMap(b *testing.B) {
+	words, err := readFileLines("testInputData.txt.gz")
+	var size int
+	for _, word := range words {
+		size += len(word)
+	}
+	if err != nil {
+		b.Fatalf("%v", err)
+	}
+	b.SetBytes(int64(size))
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		NewMetaphMap(words, maxlength)
 	}
 }

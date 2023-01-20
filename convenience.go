@@ -1,7 +1,7 @@
 // Convenience functions and methods that use Metaphone3.
 // Created 2022-12-16 by Ron Charlton and placed in the public domain.
 //
-// $Id: convenience.go,v 1.40 2023-01-16 10:43:50-05 ron Exp $
+// $Id: convenience.go,v 1.42 2023-01-20 03:12:29-05 ron Exp $
 
 package metaphone3
 
@@ -25,7 +25,7 @@ type MetaphMap struct {
 // length for the Metaphone3 return values.
 // The MetaphMap can be used with MatchWord to find all words in the
 // MetaphMap that sound like a given word or misspelling.
-// Argument maxLen is 4 in the original Double Metaphone algorithm.
+// Argument maxLen is 4 in the Double Metaphone algorithm.
 // Letter case is ignored in mapping the words in wordlist, as are
 // non-alphabetic characters.
 func NewMetaphMap(wordlist []string, maxLen int) *MetaphMap {
@@ -78,9 +78,10 @@ func (metaph *MetaphMap) AddWordsToMap(wordlist []string) {
 // The file can be a gzipped file with its name ending with ".gz".
 // The MetaphMap can be used with MatchWord to find all words in the
 // MetaphMap that sound like a given word or misspelling.
-// Argument maxLen is 4 in the original Double Metaphone algorithm.
+// Argument maxLen is 4 in the Double Metaphone algorithm.
 // Letter case is ignored in mapping the words in the file, as are
-// non-alphabetic characters.
+// non-alphabetic characters.  The default values of encodeVowels and
+// encodeExact are false.
 func NewMetaphMapFromFile(fileName string, maxLen int) (
 	metaph *MetaphMap, err error) {
 	return NewMetaphMapFromFileExact(fileName, maxLen, false, false)
