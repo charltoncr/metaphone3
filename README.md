@@ -1,5 +1,5 @@
 <!-- title: Metaphone3 Read Me -->
-<!-- $Id: README.md,v 1.15 2023-01-14 14:44:58-05 ron Exp $ -->
+<!-- $Id: README.md,v 1.16 2023-01-20 09:07:28-05 ron Exp $ -->
 
 # Metaphone3
 
@@ -11,6 +11,23 @@ spellings.
 
 Metaphone3 is the relatively new (2010) and improved successor to Double
 Metaphone (1999) and Metaphone (1990).
+
+- func NewMetaphone3(maxLen int) *Metaphone3
+- func (m *Metaphone3) SetEncodeVowels(b bool)
+- func (m *Metaphone3) SetEncodeExact(b bool)
+- func (m *Metaphone3) SetMaxLength(max int)
+- func (m *Metaphone3) Encode(word string) (key1, key2 string)
+
+**NewMetaphone3** returns a new metaphone3 instance with its own maximum key
+length. Both encodeVowels and encodeExact default to false.
+
+**Encode** returns main and alternate keys for a word.  Keys will match for similar sounding words.
+
+**SetEncodeVowels** determines whether vowels after the first character are encoded.
+
+**SetEncodeExact** determines whether consonants are encoded more precisely.
+
+**SetMaxLength** sets the the maximum allowed length for metaphone3 keys.
 
 Example use:
 
@@ -45,10 +62,10 @@ in the map that match a given word/misspelling.  See the example below.
 - func (metaph *MetaphMap) Len() int
 
 **NewMetaphMap** returns a MetaphMap made from a wordlist and a maximum length
-for the DoubleMetaphone return values.
+for the metaphone3 keys.
 
 **NewMetaphMapFromFile** returns a MetaphMap made from a word list file and
-a maximum length for the DoubleMetaphone return values.
+a maximum length for the metaphone3 keys.
 
 **NewMetaphMapFromFileExact** works like NewMetaphMapFromFile but allows
 control of how vowels and consonants are encoded.
