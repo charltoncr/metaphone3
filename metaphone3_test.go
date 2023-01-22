@@ -24,7 +24,7 @@ import (
 	"testing"
 )
 
-// $Id: metaphone3_test.go,v 1.14 2023-01-20 03:13:03-05 ron Exp $
+// $Id: metaphone3_test.go,v 1.17 2023-01-22 12:02:27-05 ron Exp $
 
 const maxlength = 6
 
@@ -102,15 +102,20 @@ func BenchmarkEncode(b *testing.B) {
 		met.Encode(str)
 	}
 }
-func BenchmarkDoFile(b *testing.B) {
-	words, err := readFileLines("testInputData.txt.gz")
-	var size int
-	for _, word := range words {
-		size += len(word)
-	}
+
+func getWords(b *testing.B) (words []string, size int) {
+	var err error
+	words, err = readFileLines("testInputData.txt.gz")
 	if err != nil {
 		b.Fatalf("%v", err)
 	}
+	for _, word := range words {
+		size += len(word)
+	}
+	return words, size
+}
+func BenchmarkDoFile(b *testing.B) {
+	words, size := getWords(b)
 	met := NewMetaphone3(maxlength)
 	b.SetBytes(int64(size))
 	b.ResetTimer()
@@ -121,14 +126,7 @@ func BenchmarkDoFile(b *testing.B) {
 	}
 }
 func BenchmarkNewMetaphMap(b *testing.B) {
-	words, err := readFileLines("testInputData.txt.gz")
-	var size int
-	for _, word := range words {
-		size += len(word)
-	}
-	if err != nil {
-		b.Fatalf("%v", err)
-	}
+	words, size := getWords(b)
 	b.SetBytes(int64(size))
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
