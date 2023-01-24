@@ -2,7 +2,7 @@
 // on 2023-01-05 from the original Java code at
 // https://github.com/OpenRefine/OpenRefine/blob/master/main/src/com/google/refine/clustering/binning/Metaphone3.java
 //
-// $Id: metaphone3.go,v 4.36 2023-01-24 06:58:49-05 ron Exp $
+// $Id: metaphone3.go,v 4.40 2023-01-24 11:56:41-05 ron Exp $
 //
 // This open source Go file is based on Metaphone3.java 2.1.3 that is
 // copyright 2010 by Laurence Philips, and is also open source.
@@ -192,8 +192,8 @@ type Metaphone3 struct {
 	* measured at beginning of encoding. */
 	length int
 
-	/** Length of encoded key string. */
-	metaphLength int
+	/** Maximum length of encoded key string. */
+	maxLength int
 
 	/** Flag whether or not to encode non-initial vowels. */
 	encodeVowels bool
@@ -228,7 +228,7 @@ type Metaphone3 struct {
 // Argument maxLen is 4 in the Double Metaphone algorithm.
 func NewMetaphone3(maxLen int) *Metaphone3 {
 	return &Metaphone3{
-		metaphLength: maxLen,
+		maxLength: maxLen,
 	}
 }
 
@@ -249,14 +249,13 @@ func (m *Metaphone3) SetMaxLength(max int) {
 	if max < 1 {
 		max = 4
 	}
-	m.metaphLength = max
+	m.maxLength = max
 }
 
 // Encode returns main and alternate keys for word.  It honors
 // the values set by SetEncodeVowels, SetEncodeExact and
-// SetMaxLength.  The keys will match for words that sound similar.
-// Either key can match either of the other word's keys for similar
-// sounding words.
+// SetMaxLength.  One of a word's keys will match one of the other
+// word's keys for similar sounding words.
 func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	m.flag_AL_inversion = false
 
@@ -276,7 +275,7 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	m.last = m.length - 1
 
 	///////////main loop//////////////////////////
-	for len(m.primary) < m.metaphLength || len(m.secondary) < m.metaphLength {
+	for len(m.primary) < m.maxLength || len(m.secondary) < m.maxLength {
 		if m.current >= m.length {
 			break
 		}
@@ -346,13 +345,13 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 		}
 	}
 
-	// only give back m.metaphLength number of chars in m.primary/m.secondary
-	if len(m.primary) > m.metaphLength {
-		m.primary = m.primary[:m.metaphLength]
+	// only give back m.maxLength number of chars in m.primary/m.secondary
+	if len(m.primary) > m.maxLength {
+		m.primary = m.primary[:m.maxLength]
 	}
 
-	if len(m.secondary) > m.metaphLength {
-		m.secondary = m.secondary[:m.metaphLength]
+	if len(m.secondary) > m.maxLength {
+		m.secondary = m.secondary[:m.maxLength]
 	}
 
 	metaph = string(m.primary)
@@ -1004,7 +1003,7 @@ func (m *Metaphone3) encodeVowel() {
 	}
 
 	if !(!m.isVowel(m.current-2) && m.stringAt(-1, "LEWA", "LEWO", "LEWI")) {
-		m.current = m.skipVowels(m.current)
+		m.current = m.skipVowels(m.current + 1)
 	} else {
 		m.current++
 	}
@@ -2858,9 +2857,8 @@ func (m *Metaphone3) encodeInitialSilentH() bool {
 			m.metaphAdd("A")
 		}
 
-		m.current++
 		// don't encode vowels twice
-		m.current = m.skipVowels(m.current)
+		m.current = m.skipVowels(m.current + 1)
 		return true
 	}
 
@@ -2931,9 +2929,8 @@ func (m *Metaphone3) encodeNonInitialSilentH() bool {
 		if !m.encodeVowels {
 			m.current += 2
 		} else {
-			m.current++
 			// don't encode vowels twice
-			m.current = m.skipVowels(m.current)
+			m.current = m.skipVowels(m.current + 1)
 		}
 		return true
 	}
@@ -3254,8 +3251,7 @@ func (m *Metaphone3) encodeJToJ() bool {
 			}
 		}
 
-		m.current++
-		m.current = m.skipVowels(m.current)
+		m.current = m.skipVowels(m.current + 1)
 		return false
 	} else {
 		m.metaphAdd("J")
@@ -3693,7 +3689,7 @@ func (m *Metaphone3) encodeVowelPreserveVowelAfterL(save_current int) bool {
 			((save_current + 2) == m.last)) &&
 		!m.stringAt((save_current-1), "RLEST") {
 		m.metaphAdd("LA")
-		m.current = m.skipVowels(m.current)
+		m.current = m.skipVowels(m.current + 1)
 		return true
 	}
 
@@ -5796,9 +5792,8 @@ func (m *Metaphone3) encodeInitialWVowel() bool {
 			m.metaphAdd("A")
 		}
 
-		m.current++
 		// don't encode vowels twice
-		m.current = m.skipVowels(m.current)
+		m.current = m.skipVowels(m.current + 1)
 		return true
 	}
 
@@ -5835,9 +5830,8 @@ func (m *Metaphone3) encodeWH() bool {
 				return true
 			} else if m.current == 0 {
 				m.metaphAdd("A")
-				m.current += 2
 				// don't encode vowels twice
-				m.current = m.skipVowels(m.current)
+				m.current = m.skipVowels(m.current + 2)
 				return true
 			}
 		}
