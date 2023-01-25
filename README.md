@@ -1,5 +1,5 @@
 <!-- title: Metaphone3 Read Me -->
-<!-- $Id: README.md,v 1.19 2023-01-25 12:35:17-05 ron Exp $ -->
+<!-- $Id: README.md,v 1.20 2023-01-25 12:42:39-05 ron Exp $ -->
 
 # Metaphone3
 
@@ -74,7 +74,7 @@ in the map that match a given word/misspelling.  See the example below.
 | **NewMetaphMapFromFileExact** | Works like NewMetaphMapFromFile but allows control of how vowels and consonants are encoded. |
 | **AddWordsToMap** | Adds words from a word list to an existing MetaphMap. This is useful for combining word lists, for example, a general word list and a user's personal word list. |
 | **AddWordsFromFile** | Adds words from a file to an existing MetaphMap. |
-| **MatchWord** | Returns all words in a MetaphMap that sound like word. Case in word is ignored, as are non-alphabetic characters. |
+| **MatchWord** | Returns all words in a MetaphMap that sound like word. Letter case in word is ignored, as are non-alphabetic characters. |
 | **Len** | Returns the number of sounds-alike keys in the metaph map. |
 
 Example use:
