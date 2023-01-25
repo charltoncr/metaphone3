@@ -2,7 +2,7 @@
 // on 2023-01-05 from the original Java code at
 // https://github.com/OpenRefine/OpenRefine/blob/master/main/src/com/google/refine/clustering/binning/Metaphone3.java
 //
-// $Id: metaphone3.go,v 4.46 2023-01-25 10:36:42-05 ron Exp $
+// $Id: metaphone3.go,v 4.47 2023-01-25 12:25:30-05 ron Exp $
 //
 // This open source Go file is based on Metaphone3.java 2.1.3 that is
 // copyright 2010 by Laurence Philips, and is also open source.
@@ -250,6 +250,23 @@ func (m *Metaphone3) SetMaxLength(max int) {
 		max = 4
 	}
 	m.maxLength = max
+}
+
+// GetEncodeVowels returns true if vowels after the first character
+// are encoded.
+func (m *Metaphone3) GetEncodeVowels() bool {
+	return m.encodeVowels
+}
+
+// GetEncodeExact returns true if consonants are encoded more exactly.
+func (m *Metaphone3) GetEncodeExact() bool {
+	return m.encodeExact
+}
+
+// GetMaxLength returns the maximum length possible for each of the
+// return values from Encode.
+func (m *Metaphone3) GetMaxLength() int {
+	return m.maxLength
 }
 
 // Encode returns main and alternate keys for word.  It honors

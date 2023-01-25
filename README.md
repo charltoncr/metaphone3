@@ -1,5 +1,5 @@
 <!-- title: Metaphone3 Read Me -->
-<!-- $Id: README.md,v 1.17 2023-01-20 09:45:15-05 ron Exp $ -->
+<!-- $Id: README.md,v 1.19 2023-01-25 12:35:17-05 ron Exp $ -->
 
 # Metaphone3
 
@@ -12,10 +12,15 @@ spellings.
 Metaphone3 is the relatively new (2010) and improved successor to Double
 Metaphone (1999) and Metaphone (1990).
 
+### **FUNCTION SIGNATURES**
+
 - func NewMetaphone3(maxLen int) *Metaphone3
 - func (m *Metaphone3) SetEncodeVowels(b bool)
 - func (m *Metaphone3) SetEncodeExact(b bool)
 - func (m *Metaphone3) SetMaxLength(max int)
+- func (m *Metaphone3) GetEncodeVowels() bool
+- func (m *Metaphone3) GetEncodeExact() bool
+- func (m *Metaphone3) GetMaxLength() int
 - func (m *Metaphone3) Encode(word string) (key1, key2 string)
 
 | FUNCTION | DESCRIPTION |
@@ -24,7 +29,10 @@ Metaphone (1999) and Metaphone (1990).
 | **Encode** | Returns main and alternate keys for a word.  Keys will match for similar sounding words. |
 | **SetEncodeVowels** | Determines whether vowels after the first character are encoded. |
 | **SetEncodeExact** | Determines whether consonants are encoded more precisely. |
-| **SetMaxLength** | Sets the the maximum allowed length for metaphone3 keys. |
+| **SetMaxLength** | Sets the maximum allowed length for metaphone3 keys. |
+| **GetEncodeVowels** | Returns true if vowels after the first character are encoded. |
+| **GetEncodeExact** | Returns true if consonants are encoded more precisely. |
+| **GetMaxLength** | Returns the maximum allowed length for metaphone3 keys. |
 
 Example use:
 
@@ -49,9 +57,10 @@ Two function calls are sufficient to read all words in a file, create a
 map of words that have the same metaphone return values, and find all words
 in the map that match a given word/misspelling.  See the example below.
 
+### **FUNCTION SIGNATURES**
+
 - func NewMetaphMap(wordlist []string, maxLen int) (*MetaphMap, error)
-- func NewMetaphMapFromFile(fileName string, maxLen int) (
-  metaph *MetaphMap, err error)
+- func NewMetaphMapFromFile(fileName string, maxLen int) (metaph *MetaphMap, err error)
 - func NewMetaphMapFromFileExact(fileName string, maxLen int, encodeVowels, encodeExact bool) (metaph *MetaphMap, err error)
 - func (metaph *MetaphMap) AddWordsToMap(wordlist []string)
 - func (metaph *MetaphMap) AddWordsFromFile(fileName string) error
