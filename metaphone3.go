@@ -2,7 +2,7 @@
 // on 2023-01-05 from the original Java code at
 // https://github.com/OpenRefine/OpenRefine/blob/master/main/src/com/google/refine/clustering/binning/Metaphone3.java
 //
-// $Id: metaphone3.go,v 4.40 2023-01-24 11:56:41-05 ron Exp $
+// $Id: metaphone3.go,v 4.46 2023-01-25 10:36:42-05 ron Exp $
 //
 // This open source Go file is based on Metaphone3.java 2.1.3 that is
 // copyright 2010 by Laurence Philips, and is also open source.
@@ -375,28 +375,25 @@ func (m *Metaphone3) metaphAdd(s ...string) {
 	if len(s) < 1 || len(s) > 2 {
 		panic("metaphAdd requires one or two arguments")
 	}
-	main := s[0]
+	// main: s[0]   alt: s[1]
 	primaryLen := len(m.primary)
 	secondaryLen := len(m.secondary)
-	if !(main == "A" &&
+	if !(s[0] == "A" &&
 		(primaryLen > 0) &&
 		(m.primary[primaryLen-1] == 'A')) {
-		m.primary = append(m.primary, []rune(main)...)
+		m.primary = append(m.primary, []rune(s[0])...)
 	}
 	if len(s) == 1 {
-		if !(main == "A" &&
+		if !(s[0] == "A" &&
 			(secondaryLen > 0) &&
 			(m.secondary[secondaryLen-1] == 'A')) {
-			m.secondary = append(m.secondary, []rune(main)...)
+			m.secondary = append(m.secondary, []rune(s[0])...)
 		}
 	} else {
-		alt := s[1]
-		if !(alt == "A" &&
+		if !(s[1] == "A" &&
 			(secondaryLen > 0) &&
-			(m.secondary[secondaryLen-1] == 'A')) {
-			if len(alt) > 0 {
-				m.secondary = append(m.secondary, []rune(alt)...)
-			}
+			(m.secondary[secondaryLen-1] == 'A')) && len(s[1]) > 0 {
+			m.secondary = append(m.secondary, []rune(s[1])...)
 		}
 	}
 }
@@ -453,7 +450,7 @@ func (m *Metaphone3) charAt(at int) rune {
 // in m.inWord at position pos.  The strings in s must be in order by
 // increasing length, shortest first.
 func (m *Metaphone3) stringAtPos(pos int, s ...string) bool {
-	if pos >= 0 && pos < m.length && len(s) > 0 && m.length >= len(s[0]) {
+	if pos >= 0 && pos < m.length && len(s) > 0 && len(s[0]) <= m.length {
 	outerForLoop:
 		for _, str := range s {
 			if (pos + len(str)) > m.length {
@@ -634,16 +631,15 @@ func (m *Metaphone3) rootOrInflections(InWord []rune, root string) bool {
 	lastrune := rootrune[len-1]
 	var test string
 
-	test = root + "S"
-	if inWord == root || inWord == test {
+	if inWord == root {
 		return true
 	}
 
-	if lastrune != 'E' {
-		test = root + "ES"
+	if inWord == root+"S" {
+		return true
 	}
 
-	if inWord == test {
+	if lastrune != 'E' && inWord == root+"ES" {
 		return true
 	}
 
@@ -661,18 +657,15 @@ func (m *Metaphone3) rootOrInflections(InWord []rune, root string) bool {
 		root = string(rootrune[:len-1])
 	}
 
-	test = root + "ING"
-	if inWord == test {
+	if inWord == root+"ING" {
 		return true
 	}
 
-	test = root + "INGLY"
-	if inWord == test {
+	if inWord == root+"INGLY" {
 		return true
 	}
 
-	test = root + "Y"
-	return inWord == test
+	return inWord == root+"Y"
 }
 
 /**
