@@ -2,7 +2,7 @@
 // on 2023-01-05 from the original Java code at
 // https://github.com/OpenRefine/OpenRefine/blob/master/main/src/com/google/refine/clustering/binning/Metaphone3.java
 //
-// $Id: metaphone3.go,v 4.47 2023-01-25 12:25:30-05 ron Exp $
+// $Id: metaphone3.go,v 5.1 2023-01-26 10:41:39-05 ron Exp $
 //
 // This open source Go file is based on Metaphone3.java 2.1.3 that is
 // copyright 2010 by Laurence Philips, and is also open source.
@@ -182,8 +182,6 @@ import (
 	"strings"
 )
 
-var ()
-
 // Metaphone3 defines a type and return length for Metaphone3, as well as
 // recording whether vowels after the first character are encoded and whether
 // consonants are encoded more exactly.
@@ -201,6 +199,9 @@ type Metaphone3 struct {
 	/** Flag whether or not to encode consonants as exactly
 	* as possible. */
 	encodeExact bool
+
+	// save original word passed to Encode; for use in encodeGermanZ
+	word string
 
 	/** Internal copy of word to be encoded, allocated separately
 	* from string pointed to in incoming parameter. */
@@ -278,7 +279,10 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 
 	m.current = 0
 
-	m.inWord = []rune(strings.ToUpper(word))
+	// save word for use in encodeGermanZ function for speed
+	m.word = strings.ToUpper(word)
+
+	m.inWord = []rune(m.word)
 	m.length = len(m.inWord)
 
 	m.primary = []rune{}
@@ -372,12 +376,13 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	}
 
 	metaph = string(m.primary)
-	metaph2 = string(m.secondary)
 
 	// it is possible for the two metaphs to be the same
 	// after truncation. lose the second one if so
-	if metaph2 == metaph {
+	if runeSlicesEqual(m.primary, m.secondary) {
 		metaph2 = ""
+	} else {
+		metaph2 = string(m.secondary)
 	}
 
 	return
@@ -634,6 +639,31 @@ func (m *Metaphone3) advanceCounter(ifNotEncodeVowels, ifEncodeVowels int) {
 	}
 }
 
+// Variables used in rootOrInflections.  Here so they are evaluated once
+// at compile time.
+var (
+	s     = []rune("S")
+	es    = []rune("ES")
+	ed    = []rune("ED")
+	d     = []rune("D")
+	ing   = []rune("ING")
+	ingly = []rune("INGLY")
+	y     = []rune("Y")
+)
+
+// runeSlicesEqual determines whether a == b.
+func runeSlicesEqual(a, b []rune) bool {
+	if len(a) == len(b) {
+		for i, r := range a {
+			if r != b[i] {
+				return false
+			}
+		}
+		return true
+	}
+	return false
+}
+
 /**
  * Tests whether the word is the root or a regular english inflection
  * of it, e.g. "ache", "achy", "aches", "ached", "aching", "achingly"
@@ -641,48 +671,52 @@ func (m *Metaphone3) advanceCounter(ifNotEncodeVowels, ifEncodeVowels int) {
  * inflected forms, and not completely different words which may have the
  * same substring in them.
  */
-func (m *Metaphone3) rootOrInflections(InWord []rune, root string) bool {
-	inWord := string(InWord)
+// This version is much faster than messing around with strings.
+func (m *Metaphone3) rootOrInflections(inWord []rune, root string) bool {
 	rootrune := []rune(root)
 	len := len(rootrune)
 	lastrune := rootrune[len-1]
-	var test string
+	var test []rune
 
-	if inWord == root {
-		return true
-	}
-
-	if inWord == root+"S" {
-		return true
-	}
-
-	if lastrune != 'E' && inWord == root+"ES" {
+	test = append(rootrune, s...)
+	if runeSlicesEqual(inWord, rootrune) || runeSlicesEqual(inWord, test) {
 		return true
 	}
 
 	if lastrune != 'E' {
-		test = root + "ED"
-	} else {
-		test = root + "D"
+		test = append(rootrune, es...)
 	}
 
-	if inWord == test {
+	if runeSlicesEqual(inWord, test) {
+		return true
+	}
+
+	if lastrune != 'E' {
+		test = append(rootrune, ed...)
+	} else {
+		test = append(rootrune, d...)
+	}
+
+	if runeSlicesEqual(inWord, test) {
 		return true
 	}
 
 	if lastrune == 'E' {
-		root = string(rootrune[:len-1])
+		rootrune = rootrune[:len-1]
 	}
 
-	if inWord == root+"ING" {
+	test = append(rootrune, ing...)
+	if runeSlicesEqual(inWord, test) {
 		return true
 	}
 
-	if inWord == root+"INGLY" {
+	test = append(rootrune, ingly...)
+	if runeSlicesEqual(inWord, test) {
 		return true
 	}
 
-	return inWord == root+"Y"
+	test = append(rootrune, y...)
+	return runeSlicesEqual(inWord, test)
 }
 
 /**
@@ -6128,7 +6162,7 @@ func (m *Metaphone3) encodeGermanZ() bool {
 		m.stringAt(-4, "VENEZIA") ||
 		m.stringAt(-3, "HERZOG") ||
 		// german words beginning with "sch-" but not schlimazel, schmooze
-		(strings.Contains(string(m.inWord), "SCH") && !(m.stringAtEnd("IZE", "OZE", "ZEL"))) ||
+		(strings.Contains(m.word, "SCH") && !(m.stringAtEnd("IZE", "OZE", "ZEL"))) ||
 		((m.current > 0) && m.stringAt(0, "ZEIT")) ||
 		m.stringAt(-3, "WEIZ") {
 		if (m.current > 0) && m.charAt(m.current-1) == 'T' {
