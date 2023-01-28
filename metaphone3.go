@@ -2,7 +2,7 @@
 // on 2023-01-05 from the original Java code at
 // https://github.com/OpenRefine/OpenRefine/blob/master/main/src/com/google/refine/clustering/binning/Metaphone3.java
 //
-// $Id: metaphone3.go,v 5.1 2023-01-26 10:41:39-05 ron Exp $
+// $Id: metaphone3.go,v 5.4 2023-01-28 07:52:05-05 ron Exp $
 //
 // This open source Go file is based on Metaphone3.java 2.1.3 that is
 // copyright 2010 by Laurence Philips, and is also open source.
@@ -375,17 +375,13 @@ func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 		m.secondary = m.secondary[:m.maxLength]
 	}
 
-	metaph = string(m.primary)
-
 	// it is possible for the two metaphs to be the same
 	// after truncation. lose the second one if so
 	if runeSlicesEqual(m.primary, m.secondary) {
-		metaph2 = ""
-	} else {
-		metaph2 = string(m.secondary)
+		return string(m.primary), ""
 	}
 
-	return
+	return string(m.primary), string(m.secondary)
 }
 
 // metaphAdd adds a string to primary and secondary.  Call it with 1 or 2
@@ -1112,7 +1108,7 @@ func (m *Metaphone3) encodeCHToH() bool {
 func (m *Metaphone3) encodeSilentCAtBeginning() bool {
 	//skip these when at start of word
 	if (m.current == 0) && m.stringAt(0, "CT", "CN") {
-		m.current += 1
+		m.current++
 		return true
 	}
 
@@ -2050,7 +2046,7 @@ func (m *Metaphone3) encodeSilentGAtBeginning() bool {
 	//skip these when at start of word
 	if (m.current == 0) &&
 		m.stringAt(0, "GN") {
-		m.current += 1
+		m.current++
 		return true
 	}
 
@@ -3358,7 +3354,7 @@ func (m *Metaphone3) encodeSilentK() bool {
 	//skip this except for special cases
 	if (m.current == 0) && m.stringAt(0, "KN") {
 		if !(m.stringAt(2, "ESSET", "IEVEL") || m.stringAt(2, "ISH")) {
-			m.current += 1
+			m.current++
 			return true
 		}
 	}
@@ -3799,7 +3795,7 @@ func (m *Metaphone3) encodeL() {
 func (m *Metaphone3) encodeSilentMAtBeginning() bool {
 	//skip these when at start of word
 	if (m.current == 0) && m.stringAt(0, "MN") {
-		m.current += 1
+		m.current++
 		return true
 	}
 
@@ -4098,7 +4094,7 @@ func (m *Metaphone3) encodeSilentPAtBeginning() bool {
 	//skip these when at start of word
 	if (m.current == 0) &&
 		m.stringAt(0, "PN", "PF", "PS", "PT") {
-		m.current += 1
+		m.current++
 		return true
 	}
 
@@ -5118,7 +5114,7 @@ func (m *Metaphone3) encodeSC() bool {
 	if m.stringAt(0, "SC") {
 		// exception 'viscount'
 		if m.stringAt(-2, "VISCOUNT") {
-			m.current += 1
+			m.current++
 			return true
 		}
 
@@ -5689,7 +5685,7 @@ func (m *Metaphone3) encodeSilentWAtBeginning() bool {
 	//skip these when at start of word
 	if (m.current == 0) &&
 		m.stringAt(0, "WR") {
-		m.current += 1
+		m.current++
 		return true
 	}
 
