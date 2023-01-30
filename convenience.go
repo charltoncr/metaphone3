@@ -1,7 +1,7 @@
 // Convenience functions and methods that use Metaphone3.
 // Created 2022-12-16 by Ron Charlton and placed in the public domain.
 //
-// $Id: convenience.go,v 1.42 2023-01-20 03:12:29-05 ron Exp $
+// $Id: convenience.go,v 2.7 2023-01-30 14:21:27-05 ron Exp $
 
 package metaphone3
 
@@ -11,6 +11,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -146,6 +148,8 @@ func (metaph *MetaphMap) Len() int {
 }
 
 // MatchWord returns all words in metaph that sound like word.
+// Output's elements are sorted by order of their approximate frequency of
+// occurrence in English, so more likely choices appear earlier in output.
 // Letter case and non-alphabetic characters in word are ignored.
 func (metaph *MetaphMap) MatchWord(word string) (output []string) {
 	m, m2 := metaph.met.Encode(word)
@@ -156,6 +160,44 @@ func (metaph *MetaphMap) MatchWord(word string) (output []string) {
 		output = append(output, metaph.mapper[m2]...)
 	}
 	output = removeDups(output)
+	output = RankWords(output)
+	return
+}
+
+// the frequency of occurrence for each word, as an integer: map[word]frequency
+var freqs = map[string]uint8{}
+
+func init() {
+	// get ready for RankWords
+	lines := strings.Split(string(noCRs(wordFrequencies)), "\n")
+	for _, line := range lines {
+		if len(line) > 0 {
+			t := strings.Split(line, "|")
+			fr, err := strconv.ParseUint(t[0], 10, 32)
+			if err != nil {
+				fr = 200
+			}
+			freqs[t[1]] = uint8(fr)
+		}
+	}
+}
+
+// RankWords returns words sorted by order of their approximate frequency of
+// occurrence in English, so more common words appear earlier in output.
+func RankWords(words []string) (output []string) {
+	output = words
+	less := func(i, j int) bool {
+		ia := freqs[output[i]]
+		ja := freqs[output[j]]
+		if ia == 0 { // output[i] not found in freqs, therefore big ia
+			ia = 100
+		}
+		if ja == 0 { // ditto ja
+			ja = 100
+		}
+		return ia < ja
+	}
+	sort.Slice(output, less)
 	return
 }
 

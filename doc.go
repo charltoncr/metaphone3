@@ -1,5 +1,7 @@
 // Package metaphone3 consists of a metaphone3 implementation in
-// metaphone3.go and convenience functions in convenience.go.
+// metaphone3.go and convenience functions in convenience.go and wordFreq.go.
+// metaphone3.go can be used standalone; it does not require convenience.go
+// or wordFreq.go to function.
 //
 // Metaphone3 is the relatively new (2010) and improved successor to Double
 // Metaphone (1999) and Metaphone (1990).  It encodes similar sounding words

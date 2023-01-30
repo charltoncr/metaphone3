@@ -2,7 +2,7 @@
 // on 2023-01-05 from the original Java code at
 // https://github.com/OpenRefine/OpenRefine/blob/master/main/src/com/google/refine/clustering/binning/Metaphone3.java
 //
-// $Id: metaphone3.go,v 5.4 2023-01-28 07:52:05-05 ron Exp $
+// $Id: metaphone3.go,v 5.7 2023-01-29 10:48:41-05 ron Exp $
 //
 // This open source Go file is based on Metaphone3.java 2.1.3 that is
 // copyright 2010 by Laurence Philips, and is also open source.
@@ -264,7 +264,7 @@ func (m *Metaphone3) GetEncodeExact() bool {
 	return m.encodeExact
 }
 
-// GetMaxLength returns the maximum length possible for each of the
+// GetMaxLength returns the maximum length allowed for each of the
 // return values from Encode.
 func (m *Metaphone3) GetMaxLength() int {
 	return m.maxLength
@@ -464,7 +464,7 @@ func (m *Metaphone3) charAt(at int) rune {
 	return 0
 }
 
-// stringAtPos determines if any of the strings in s are
+// stringAtPos returns true if any of the strings in s are
 // in m.inWord at position pos.  The strings in s must be in order by
 // increasing length, shortest first.
 func (m *Metaphone3) stringAtPos(pos int, s ...string) bool {
@@ -485,7 +485,7 @@ func (m *Metaphone3) stringAtPos(pos int, s ...string) bool {
 	return false
 }
 
-// stringEqual determines if any of the strings in s are
+// stringEqual returns true if any of the strings in s are
 // equal to m.inWord.  The strings in s must be in order by
 // increasing length, shortest first.
 func (m *Metaphone3) stringEqual(s ...string) bool {
@@ -507,21 +507,21 @@ outerForLoop:
 	return false
 }
 
-// stringAt determines if any of the strings in s are
+// stringAt returns true if any of the strings in s are
 // in m.inWord at m.current+offset.  The strings in s must be in order by
 // increasing length, shortest first.
 func (m *Metaphone3) stringAt(offset int, s ...string) bool {
 	return m.stringAtPos(m.current+offset, s...)
 }
 
-// stringAtStart determines if any of the strings in s are
+// stringAtStart returns true if any of the strings in s are
 // in m.inWord at its beginning.  The strings in s must be in order by
 // increasing length, shortest first.
 func (m *Metaphone3) stringAtStart(s ...string) bool {
 	return m.stringAtPos(0, s...)
 }
 
-// stringAtEnd determines if any of the strings in s are
+// stringAtEnd returns true if any of the strings in s are
 // in m.inWord at its end.  The strings in s must be in order by
 // increasing length, shortest first.
 func (m *Metaphone3) stringAtEnd(s ...string) bool {
@@ -647,7 +647,7 @@ var (
 	y     = []rune("Y")
 )
 
-// runeSlicesEqual determines whether a == b.
+// runeSlicesEqual returns true if a == b.
 func runeSlicesEqual(a, b []rune) bool {
 	if len(a) == len(b) {
 		for i, r := range a {
