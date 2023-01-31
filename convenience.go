@@ -1,7 +1,7 @@
 // Convenience functions and methods that use Metaphone3.
 // Created 2022-12-16 by Ron Charlton and placed in the public domain.
 //
-// $Id: convenience.go,v 2.7 2023-01-30 14:21:27-05 ron Exp $
+// $Id: convenience.go,v 2.9 2023-01-31 07:34:10-05 ron Exp $
 
 package metaphone3
 
@@ -169,7 +169,8 @@ var freqs = map[string]uint8{}
 
 func init() {
 	// get ready for RankWords
-	lines := strings.Split(string(noCRs(wordFrequencies)), "\n")
+	// lines := strings.Split(string(noCRs(wordFrequencies)), "\n")
+	lines := strings.Split(wordFrequencies, "\n")
 	for _, line := range lines {
 		if len(line) > 0 {
 			t := strings.Split(line, "|")
