@@ -1,5 +1,5 @@
 // This file was created by /Users/ron/go/src/metaphone3/textFileToGoSrc.py
-// from file "standard input" at Tue Jan 31 07:39:10 2023.
+// from file "SCOWLwordFreq.txt" at 2023-01-31 15:42:19-0500.
 
 package metaphone3
 

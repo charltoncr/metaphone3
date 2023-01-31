@@ -1,7 +1,7 @@
 // Convenience functions and methods that use Metaphone3.
 // Created 2022-12-16 by Ron Charlton and placed in the public domain.
 //
-// $Id: convenience.go,v 2.9 2023-01-31 07:34:10-05 ron Exp $
+// $Id: convenience.go,v 2.12 2023-01-31 15:11:32-05 ron Exp $
 
 package metaphone3
 
@@ -148,10 +148,11 @@ func (metaph *MetaphMap) Len() int {
 }
 
 // MatchWord returns all words in metaph that sound like word.
-// Output's elements are sorted by order of their approximate frequency of
-// occurrence in English, so more likely choices appear earlier in output.
+// the returned words are sorted by order of their approximate frequency of
+// occurrence in English, so more likely choices appear earlier.
 // Letter case and non-alphabetic characters in word are ignored.
-func (metaph *MetaphMap) MatchWord(word string) (output []string) {
+func (metaph *MetaphMap) MatchWord(word string) []string {
+	var output []string
 	m, m2 := metaph.met.Encode(word)
 	if len(m) > 0 {
 		output = metaph.mapper[m]
@@ -159,21 +160,19 @@ func (metaph *MetaphMap) MatchWord(word string) (output []string) {
 	if len(m2) > 0 {
 		output = append(output, metaph.mapper[m2]...)
 	}
-	output = removeDups(output)
-	output = RankWords(output)
-	return
+	return RankWords(removeDups(output))
 }
 
-// the frequency of occurrence for each word, as an integer: map[word]frequency
+// the frequency of occurrence for each word, as integer: map[word]frequency
 var freqs = map[string]uint8{}
 
 func init() {
-	// get ready for RankWords
-	// lines := strings.Split(string(noCRs(wordFrequencies)), "\n")
-	lines := strings.Split(wordFrequencies, "\n")
+	// get ready for RankWords (wordFrequencies is in wordFreq.go)
+	s := strings.ReplaceAll(wordFrequencies, "\r", "")
+	lines := strings.Split(s, "\n")
 	for _, line := range lines {
-		if len(line) > 0 {
-			t := strings.Split(line, "|")
+		t := strings.Split(line, "|")
+		if len(t) == 2 {
 			fr, err := strconv.ParseUint(t[0], 10, 32)
 			if err != nil {
 				fr = 200
@@ -186,15 +185,19 @@ func init() {
 // RankWords returns words sorted by order of their approximate frequency of
 // occurrence in English, so more common words appear earlier in output.
 func RankWords(words []string) (output []string) {
+	LC := strings.ToLower // alias
 	output = words
 	less := func(i, j int) bool {
 		ia := freqs[output[i]]
 		ja := freqs[output[j]]
-		if ia == 0 { // output[i] not found in freqs, therefore big ia
+		if ia == 0 { // output[i] not found in freqs, therefore not common word
 			ia = 100
 		}
 		if ja == 0 { // ditto ja
 			ja = 100
+		}
+		if ia == ja {
+			return LC(output[i]) < LC(output[j])
 		}
 		return ia < ja
 	}
