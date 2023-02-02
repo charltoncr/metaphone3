@@ -3,7 +3,7 @@
 // This file is public domain per CC0 1.0, see
 // https://creativecommons.org/publicdomain/mark/1.0/
 //
-// $Id: convenience.go,v 2.16 2023-02-02 07:59:07-05 ron Exp $
+// $Id: convenience.go,v 2.17 2023-02-02 09:00:28-05 ron Exp $
 
 package metaphone3
 
@@ -172,19 +172,20 @@ func init() {
 	// get ready for RankWords (wordFrequencies is in wordFreq.go)
 	s := strings.ReplaceAll(wordFrequencies, "\r", "")
 	lines := strings.Split(s, "\n")
-	var fr int
-	var err error
-	var t []string
+	var fr uint8 = 200
 	for _, line := range lines {
 		if strings.HasPrefix(line, ".FREQ ") {
-			t = strings.Split(line, " ")
-			fr, err = strconv.Atoi(t[1])
-			if err != nil || fr < 0 || fr > 255 {
-				fr = 200
+			t := strings.Split(line, " ")
+			if len(t) == 2 {
+				f, err := strconv.Atoi(t[1])
+				if err != nil || f < 0 || f > 255 {
+					f = 200
+				}
+				fr = uint8(f)
 			}
 			continue
 		}
-		freqs[line] = uint8(fr)
+		freqs[line] = fr
 	}
 }
 
