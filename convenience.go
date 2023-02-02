@@ -1,7 +1,9 @@
 // Convenience functions and methods that use Metaphone3.
-// Created 2022-12-16 by Ron Charlton and placed in the public domain.
+// Created 2022-12-16 by Ron Charlton.
+// This file is public domain per CC0 1.0, see
+// https://creativecommons.org/publicdomain/mark/1.0/
 //
-// $Id: convenience.go,v 2.12 2023-01-31 15:11:32-05 ron Exp $
+// $Id: convenience.go,v 2.16 2023-02-02 07:59:07-05 ron Exp $
 
 package metaphone3
 
@@ -17,14 +19,14 @@ import (
 )
 
 // MetaphMap defines a type to store a word list as a Go map indexed by return
-// values from metaphone3.
+// values from metaphone3.Encode.
 type MetaphMap struct {
 	mapper map[string][]string
 	met    *Metaphone3
 }
 
 // NewMetaphMap returns a MetaphMap made from wordlist and a maximum
-// length for the Metaphone3 return values.
+// length for metaphone3.Encode return values.
 // The MetaphMap can be used with MatchWord to find all words in the
 // MetaphMap that sound like a given word or misspelling.
 // Argument maxLen is 4 in the Double Metaphone algorithm.
@@ -36,7 +38,7 @@ func NewMetaphMap(wordlist []string, maxLen int) *MetaphMap {
 
 // NewMetaphMapExact is like NewMetaphMap but allows control of whether
 // vowels after the first character are encoded, and whether consonants are
-// encoded more precisely.
+// encoded more selectively.
 func NewMetaphMapExact(wordlist []string, maxLen int,
 	encodeVowels, encodeExact bool) *MetaphMap {
 	MMap := make(map[string][]string)
@@ -91,7 +93,7 @@ func NewMetaphMapFromFile(fileName string, maxLen int) (
 
 // NewMetaphMapFromFileExact is like NewMetaphMapFromFile but allows control
 // of whether vowels after the first character are encoded, and whether
-// consonants are encoded more precisely.
+// consonants are encoded more selectively.
 func NewMetaphMapFromFileExact(fileName string, maxLen int,
 	encodeVowels, encodeExact bool) (metaph *MetaphMap, err error) {
 	var lines []string
@@ -170,15 +172,19 @@ func init() {
 	// get ready for RankWords (wordFrequencies is in wordFreq.go)
 	s := strings.ReplaceAll(wordFrequencies, "\r", "")
 	lines := strings.Split(s, "\n")
+	var fr int
+	var err error
+	var t []string
 	for _, line := range lines {
-		t := strings.Split(line, "|")
-		if len(t) == 2 {
-			fr, err := strconv.ParseUint(t[0], 10, 32)
-			if err != nil {
+		if strings.HasPrefix(line, ".FREQ ") {
+			t = strings.Split(line, " ")
+			fr, err = strconv.Atoi(t[1])
+			if err != nil || fr < 0 || fr > 255 {
 				fr = 200
 			}
-			freqs[t[1]] = uint8(fr)
+			continue
 		}
+		freqs[line] = uint8(fr)
 	}
 }
 
@@ -193,7 +199,7 @@ func RankWords(words []string) (output []string) {
 		if ia == 0 { // output[i] not found in freqs, therefore not common word
 			ia = 100
 		}
-		if ja == 0 { // ditto ja
+		if ja == 0 { // ditto
 			ja = 100
 		}
 		if ia == ja {
