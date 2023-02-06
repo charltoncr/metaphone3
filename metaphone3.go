@@ -2,7 +2,7 @@
 // on 2023-01-05 from the original Java code at
 // https://github.com/OpenRefine/OpenRefine/blob/master/main/src/com/google/refine/clustering/binning/Metaphone3.java
 //
-// $Id: metaphone3.go,v 5.7 2023-01-29 10:48:41-05 ron Exp $
+// $Id: metaphone3.go,v 5.8 2023-02-03 07:50:27-05 ron Exp $
 //
 // This open source Go file is based on Metaphone3.java 2.1.3 that is
 // copyright 2010 by Laurence Philips, and is also open source.
@@ -274,6 +274,7 @@ func (m *Metaphone3) GetMaxLength() int {
 // the values set by SetEncodeVowels, SetEncodeExact and
 // SetMaxLength.  One of a word's keys will match one of the other
 // word's keys for similar sounding words.
+// Letter case and non-alphabetic characters in word are ignored.
 func (m *Metaphone3) Encode(word string) (metaph, metaph2 string) {
 	m.flag_AL_inversion = false
 

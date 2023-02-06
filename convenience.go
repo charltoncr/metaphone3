@@ -3,7 +3,7 @@
 // This file is public domain per CC0 1.0, see
 // https://creativecommons.org/publicdomain/mark/1.0/
 //
-// $Id: convenience.go,v 2.17 2023-02-02 09:00:28-05 ron Exp $
+// $Id: convenience.go,v 2.22 2023-02-03 11:30:41-05 ron Exp $
 
 package metaphone3
 
@@ -150,7 +150,7 @@ func (metaph *MetaphMap) Len() int {
 }
 
 // MatchWord returns all words in metaph that sound like word.
-// the returned words are sorted by order of their approximate frequency of
+// The returned words are sorted by order of their approximate frequency of
 // occurrence in English, so more likely choices appear earlier.
 // Letter case and non-alphabetic characters in word are ignored.
 func (metaph *MetaphMap) MatchWord(word string) []string {
@@ -194,17 +194,20 @@ func init() {
 func RankWords(words []string) (output []string) {
 	LC := strings.ToLower // alias
 	output = words
+	// Could return a copy instead of the original underlying array:
+	//	output = make([]string, len(words))
+	//	copy(output, words)
 	less := func(i, j int) bool {
 		ia := freqs[output[i]]
 		ja := freqs[output[j]]
+		if ia == ja {
+			return LC(output[i]) < LC(output[j])
+		}
 		if ia == 0 { // output[i] not found in freqs, therefore not common word
 			ia = 100
 		}
 		if ja == 0 { // ditto
 			ja = 100
-		}
-		if ia == ja {
-			return LC(output[i]) < LC(output[j])
 		}
 		return ia < ja
 	}
