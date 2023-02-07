@@ -1,5 +1,5 @@
 // This file was created by /Users/ron/bin/textFileToGoSrc
-// from file "scowlWordFreq.txt" at 2023-02-06 12:04:46-0500.
+// from file "scowlWordFreq.txt" at 2023-02-07 13:42:52-0500.
 
 /*
 SCOWL Copyright 2000-2014 by Kevin Atkinson
@@ -16,7 +16,11 @@ SCOWL Copyright 2000-2014 by Kevin Atkinson
 
 package metaphone3
 
-var wordFrequencies = `.FREQ 10
+var wordFrequencies = `.COMMENT This output was created by
+.COMMENT "SCOWLwordsByFrequency.py" from files in
+.COMMENT "/Users/ron/text/WordLists/scowl-2020.12.07/final"
+.COMMENT at 2023-02-07 13:35:51-0500.
+.FREQ 10
 a
 abilities
 ability

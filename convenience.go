@@ -3,7 +3,7 @@
 // This file is public domain per CC0 1.0, see
 // https://creativecommons.org/publicdomain/mark/1.0/
 //
-// $Id: convenience.go,v 2.22 2023-02-03 11:30:41-05 ron Exp $
+// $Id: convenience.go,v 2.27 2023-02-07 10:07:49-05 ron Exp $
 
 package metaphone3
 
@@ -157,12 +157,23 @@ func (metaph *MetaphMap) MatchWord(word string) []string {
 	var output []string
 	m, m2 := metaph.met.Encode(word)
 	if len(m) > 0 {
-		output = metaph.mapper[m]
+		output = append(output, metaph.mapper[m]...) // copy of metaph.mapper[m]
 	}
 	if len(m2) > 0 {
 		output = append(output, metaph.mapper[m2]...)
 	}
 	return RankWords(removeDups(output))
+}
+
+// mySort stable sorts words into alphabetical order while ignoring case.
+func mySort(words []string) (output []string) {
+	LC := strings.ToLower // alias
+	output = words
+	less := func(i, j int) bool {
+		return LC(output[i]) < LC(output[j])
+	}
+	sort.SliceStable(output, less)
+	return
 }
 
 // the frequency of occurrence for each word, as integer: map[word]frequency
@@ -174,6 +185,9 @@ func init() {
 	lines := strings.Split(s, "\n")
 	var fr uint8 = 200
 	for _, line := range lines {
+		if strings.HasPrefix(line, ".COMMENT") {
+			continue
+		}
 		if strings.HasPrefix(line, ".FREQ ") {
 			t := strings.Split(line, " ")
 			if len(t) == 2 {
@@ -191,12 +205,15 @@ func init() {
 
 // RankWords returns words sorted by order of their approximate frequency of
 // occurrence in English, so more common words appear earlier in output.
+// The sort is stable.
 func RankWords(words []string) (output []string) {
-	LC := strings.ToLower // alias
-	output = words
 	// Could return a copy instead of the original underlying array:
 	//	output = make([]string, len(words))
 	//	copy(output, words)
+	// OR
+	//  output = append(output, words...)
+	LC := strings.ToLower  // alias
+	output = mySort(words) // for consistent output order
 	less := func(i, j int) bool {
 		ia := freqs[output[i]]
 		ja := freqs[output[j]]
@@ -211,7 +228,7 @@ func RankWords(words []string) (output []string) {
 		}
 		return ia < ja
 	}
-	sort.Slice(output, less)
+	sort.SliceStable(output, less)
 	return
 }
 

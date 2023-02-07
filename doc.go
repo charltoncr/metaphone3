@@ -14,6 +14,9 @@
 //	m := metaphone3.NewMetaphone3(4)
 //	main, alternate := m.Encode("knewmoanya")
 //
+// Keys main and alternate can be matched to other words' keys to find similar
+// sounding words.
+//
 // Convenience functions simplify the use of metaphone3, eliminating the
 // direct use of NewMetaphone3 and Encode.
 //
@@ -30,13 +33,13 @@
 //		// ...
 //		// File myWordlist.txt should contain a comprehensive word
 //	 	// list, one word per line.  Errors are ignored here.
-//		m, _ := metaphone3.NewMetaphMapFromFile("myWordlist.txt", 4)
-//		matches := m.MatchWord("knewmoanya")
+//		metaph, _ := metaphone3.NewMetaphMapFromFile("myWordlist.txt", 4)
+//		matches := metaph.MatchWord("knewmoanya")
 //		for _, word = range matches {
 //			fmt.Println(word)
 //		}
 //
-// Other convenience functions add more words to m above, and
+// Other convenience functions add more words to metaph above, and
 // provide more control over how vowels and consonants are encoded, as well as
 // working with word lists in string slices.
 //

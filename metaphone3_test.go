@@ -24,7 +24,7 @@ import (
 	"testing"
 )
 
-// $Id: metaphone3_test.go,v 1.17 2023-01-22 12:02:27-05 ron Exp $
+// $Id: metaphone3_test.go,v 1.19 2023-02-07 13:35:26-05 ron Exp $
 
 const maxlength = 6
 
@@ -114,6 +114,7 @@ func getWords(b *testing.B) (words []string, size int) {
 	}
 	return words, size
 }
+
 func BenchmarkDoFile(b *testing.B) {
 	words, size := getWords(b)
 	met := NewMetaphone3(maxlength)
@@ -125,11 +126,23 @@ func BenchmarkDoFile(b *testing.B) {
 		}
 	}
 }
+
 func BenchmarkNewMetaphMap(b *testing.B) {
 	words, size := getWords(b)
 	b.SetBytes(int64(size))
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		NewMetaphMap(words, maxlength)
+	}
+}
+
+func BenchmarkLookupWord(b *testing.B) {
+	words, _ := getWords(b)
+	m := NewMetaphMap(words, maxlength)
+	s := "knewmoanya"
+	b.SetBytes(int64(len(s)))
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		m.MatchWord(s)
 	}
 }
