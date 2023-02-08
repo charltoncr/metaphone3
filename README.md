@@ -1,5 +1,5 @@
 <!-- title: Metaphone3 Read Me -->
-<!-- $Id: README.md,v 1.22 2023-02-08 12:26:06-05 ron Exp $ -->
+<!-- $Id: README.md,v 1.23 2023-02-08 12:30:31-05 ron Exp $ -->
 
 # Metaphone3
 
@@ -67,8 +67,9 @@ import (
     "github.com/charltoncr/metaphone3"
 )
 func main() {
-    // The file specified by fileName should contain a comprehesive word
-    // list with one word per line.  (Error check is omitted for brevity.)
+    // The file specified by fileName should contain a comprehesive
+    // word list with one word per line.  (Error check is omitted
+    // for brevity.)
     fileName := "spellCheckerWords.txt" // (can be a *.txt.gz file)
     metaphMap, _ := metaphone3.NewMetaphMapFromFile(fileName, 4)
     matches := metaphMap.MatchWord("knewmoanya")
