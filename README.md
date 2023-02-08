@@ -1,5 +1,5 @@
 <!-- title: Metaphone3 Read Me -->
-<!-- $Id: README.md,v 1.20 2023-01-25 12:42:39-05 ron Exp $ -->
+<!-- $Id: README.md,v 1.21 2023-02-08 06:32:00-05 ron Exp $ -->
 
 # Metaphone3
 
@@ -15,13 +15,13 @@ Metaphone (1999) and Metaphone (1990).
 ### **FUNCTION SIGNATURES**
 
 - func NewMetaphone3(maxLen int) *Metaphone3
+- func (m *Metaphone3) Encode(word string) (key1, key2 string)
 - func (m *Metaphone3) SetEncodeVowels(b bool)
 - func (m *Metaphone3) SetEncodeExact(b bool)
 - func (m *Metaphone3) SetMaxLength(max int)
 - func (m *Metaphone3) GetEncodeVowels() bool
 - func (m *Metaphone3) GetEncodeExact() bool
 - func (m *Metaphone3) GetMaxLength() int
-- func (m *Metaphone3) Encode(word string) (key1, key2 string)
 
 | FUNCTION | DESCRIPTION |
 | --- | --- |
