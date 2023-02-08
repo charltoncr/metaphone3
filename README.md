@@ -1,5 +1,5 @@
 <!-- title: Metaphone3 Read Me -->
-<!-- $Id: README.md,v 1.21 2023-02-08 06:32:00-05 ron Exp $ -->
+<!-- $Id: README.md,v 1.22 2023-02-08 12:26:06-05 ron Exp $ -->
 
 # Metaphone3
 
@@ -11,17 +11,6 @@ spellings.
 
 Metaphone3 is the relatively new (2010) and improved successor to Double
 Metaphone (1999) and Metaphone (1990).
-
-### **FUNCTION SIGNATURES**
-
-- func NewMetaphone3(maxLen int) *Metaphone3
-- func (m *Metaphone3) Encode(word string) (key1, key2 string)
-- func (m *Metaphone3) SetEncodeVowels(b bool)
-- func (m *Metaphone3) SetEncodeExact(b bool)
-- func (m *Metaphone3) SetMaxLength(max int)
-- func (m *Metaphone3) GetEncodeVowels() bool
-- func (m *Metaphone3) GetEncodeExact() bool
-- func (m *Metaphone3) GetMaxLength() int
 
 | FUNCTION | DESCRIPTION |
 | --- | --- |
@@ -57,24 +46,15 @@ Two function calls are sufficient to read all words in a file, create a
 map of words that have the same metaphone return values, and find all words
 in the map that match a given word/misspelling.  See the example below.
 
-### **FUNCTION SIGNATURES**
-
-- func NewMetaphMap(wordlist []string, maxLen int) (*MetaphMap, error)
-- func NewMetaphMapFromFile(fileName string, maxLen int) (metaph *MetaphMap, err error)
-- func NewMetaphMapFromFileExact(fileName string, maxLen int, encodeVowels, encodeExact bool) (metaph *MetaphMap, err error)
-- func (metaph *MetaphMap) AddWordsToMap(wordlist []string)
-- func (metaph *MetaphMap) AddWordsFromFile(fileName string) error
-- func (metaph *MetaphMap) MatchWord(word string) (output []string)
-- func (metaph *MetaphMap) Len() int
-
 | FUNCTION/METHOD | DESCRIPTION |
 | --- | --- |
 | **NewMetaphMap** | Returns a MetaphMap made from a wordlist and a maximum length for the metaphone3 keys. |
+| **NewMetaphMapExact** | Works like NewMetaphMap but allows control of how vowels and consonants are encoded. |
 | **NewMetaphMapFromFile** | Returns a MetaphMap made from a word list file and a maximum length for the metaphone3 keys. |
 | **NewMetaphMapFromFileExact** | Works like NewMetaphMapFromFile but allows control of how vowels and consonants are encoded. |
 | **AddWordsToMap** | Adds words from a word list to an existing MetaphMap. This is useful for combining word lists, for example, a general word list and a user's personal word list. |
 | **AddWordsFromFile** | Adds words from a file to an existing MetaphMap. |
-| **MatchWord** | Returns all words in a MetaphMap that sound like word. Letter case in word is ignored, as are non-alphabetic characters. |
+| **MatchWord** | Returns all words in a MetaphMap that sound like a given word. Letter case in word is ignored, as are non-alphabetic characters. |
 | **Len** | Returns the number of sounds-alike keys in the metaph map. |
 
 Example use:
