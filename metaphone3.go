@@ -2,7 +2,7 @@
 // on 2023-01-05 from the original Java code at
 // https://github.com/OpenRefine/OpenRefine/blob/master/main/src/com/google/refine/clustering/binning/Metaphone3.java
 //
-// $Id: metaphone3.go,v 5.8 2023-02-03 07:50:27-05 ron Exp $
+// $Id: metaphone3.go,v 6.6 2023-02-19 12:35:19-05 ron Exp $
 //
 // This open source Go file is based on Metaphone3.java 2.1.3 that is
 // copyright 2010 by Laurence Philips, and is also open source.
@@ -465,20 +465,31 @@ func (m *Metaphone3) charAt(at int) rune {
 	return 0
 }
 
+// NOTE: All of the double-quoted strings in this file are ASCII equivalent.
+// So len(str) will yield the same as utf8.RuneCountInString(str).
+// The gyrations to account for runes vs bytes in strings isn't really
+// necessary, and costs some speed, but I'm going to keep the code as is
+// for correctness.  len([]rune(str)) is the same speed as
+// utf8.RuneCountInString(str).
+
 // stringAtPos returns true if any of the strings in s are
 // in m.inWord at position pos.  The strings in s must be in order by
-// increasing length, shortest first.
+// increasing length, shortest first.  Gyrations with iMax are so we
+// compare rune length with rune length for "len"(s) with m.length.
 func (m *Metaphone3) stringAtPos(pos int, s ...string) bool {
-	if pos >= 0 && pos < m.length && len(s) > 0 && len(s[0]) <= m.length {
+	if pos >= 0 && pos < m.length {
+		iMax := m.length - pos - 1
 	outerForLoop:
 		for _, str := range s {
-			if (pos + len(str)) > m.length {
-				break
-			}
-			for i, r := range str {
+			i := 0 // range returns byte index of rune, not rune index
+			for _, r := range str {
+				if i > iMax {
+					break outerForLoop
+				}
 				if r != m.inWord[pos+i] {
 					continue outerForLoop
 				}
+				i++
 			}
 			return true
 		}
@@ -490,18 +501,21 @@ func (m *Metaphone3) stringAtPos(pos int, s ...string) bool {
 // equal to m.inWord.  The strings in s must be in order by
 // increasing length, shortest first.
 func (m *Metaphone3) stringEqual(s ...string) bool {
+	iMax := m.length - 1
 outerForLoop:
 	for _, str := range s {
 		if len(str) < m.length {
 			continue
 		}
-		if len(str) > m.length {
-			break
-		}
-		for i, r := range str {
+		i := 0 // range returns byte index of rune, not rune count
+		for _, r := range str {
+			if i > iMax {
+				break outerForLoop
+			}
 			if r != m.inWord[i] {
 				continue outerForLoop
 			}
+			i++
 		}
 		return true
 	}
@@ -528,15 +542,15 @@ func (m *Metaphone3) stringAtStart(s ...string) bool {
 func (m *Metaphone3) stringAtEnd(s ...string) bool {
 outerForLoop:
 	for _, str := range s {
-		i := m.length - len(str)
-		if i < 0 {
+		pos := m.length - len([]rune(str))
+		if pos < 0 {
 			break
 		}
 		for _, r := range str {
-			if r != m.inWord[i] {
+			if r != m.inWord[pos] {
 				continue outerForLoop
 			}
-			i++
+			pos++
 		}
 		return true
 	}

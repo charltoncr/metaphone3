@@ -24,7 +24,7 @@ import (
 	"testing"
 )
 
-// $Id: metaphone3_test.go,v 1.19 2023-02-07 13:35:26-05 ron Exp $
+// $Id: metaphone3_test.go,v 1.21 2023-02-19 08:42:36-05 ron Exp $
 
 const maxlength = 6
 
@@ -96,7 +96,7 @@ func BenchmarkEncode(b *testing.B) {
 	met := NewMetaphone3(6)
 	met.SetMaxLength(52)
 	str := "abcdefghijklmnopqrstuvwxyz"
-	b.SetBytes(26)
+	b.SetBytes(int64(len(str)))
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		met.Encode(str)

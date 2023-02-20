@@ -3,7 +3,7 @@
 // This file is public domain per CC0 1.0, see
 // https://creativecommons.org/publicdomain/mark/1.0/
 //
-// $Id: convenience.go,v 2.32 2023-02-09 20:12:32-05 ron Exp $
+// $Id: convenience.go,v 2.37 2023-02-17 10:00:34-05 ron Exp $
 
 package metaphone3
 
@@ -246,16 +246,22 @@ func removeDups(s []string) (out []string) {
 }
 
 // noCRs returns a copy of the byte slice b with all carriage returns
-// removed.  noCRs assumes UTF-8, ANSI, ASCII or latin-X encoding.
+// removed.  noCRs assumes UTF-8, ANSI, ASCII or ISO-8859-n encoding.
+// This is optimized for faster copying than using Go's built-in copy
+// function on short lines (with CRs) like a word list contains.
 func noCRs(b []byte) []byte {
 	end := len(b)
 	crCount := bytes.Count(b, []byte{'\r'})
 	output := make([]byte, end-crCount)
-	j := 0
-	for i := 0; i < end; i++ {
-		if b[i] != '\r' {
-			output[j] = b[i]
-			j++
+	if crCount == 0 {
+		copy(output, b)
+	} else {
+		i := 0
+		for _, bt := range b {
+			if bt != '\r' {
+				output[i] = bt
+				i++
+			}
 		}
 	}
 	return output
