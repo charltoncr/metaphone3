@@ -24,7 +24,7 @@ import (
 	"testing"
 )
 
-// $Id: metaphone3_test.go,v 1.21 2023-02-19 08:42:36-05 ron Exp $
+// $Id: metaphone3_test.go,v 1.23 2023-03-16 11:33:59-04 ron Exp $
 
 const maxlength = 6
 
@@ -77,7 +77,7 @@ func readFileLines(name string) (lines []string, err error) {
 		err = fmt.Errorf("trying to read word list file %s: %v", name, err)
 		return
 	}
-	lines = strings.Split(string(noCRs(b)), "\n")
+	lines = strings.Split(strings.ReplaceAll(string(b), "\r", ""), "\n")
 	return
 }
 
@@ -93,7 +93,7 @@ func TestConvenience(t *testing.T) {
 }
 
 func BenchmarkEncode(b *testing.B) {
-	met := NewMetaphone3(6)
+	met := NewMetaphone3(maxlength)
 	met.SetMaxLength(52)
 	str := "abcdefghijklmnopqrstuvwxyz"
 	b.SetBytes(int64(len(str)))
