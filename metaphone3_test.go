@@ -24,7 +24,7 @@ import (
 	"testing"
 )
 
-// $Id: metaphone3_test.go,v 1.23 2023-03-16 11:33:59-04 ron Exp $
+// $Id: metaphone3_test.go,v 1.29 2023-03-21 09:23:18-04 ron Exp $
 
 const maxlength = 6
 
@@ -39,9 +39,8 @@ func TestMetaphone3(t *testing.T) {
 		t.Fatalf("%v", err)
 	}
 
-	idx := 0
 	met := NewMetaphone3(maxlength)
-	for _, word := range words {
+	for idx, word := range words {
 		if len(word) > 0 {
 			m, m2 := met.Encode(word)
 			got := fmt.Sprintf("'%s' '%s' %s", m, m2, word)
@@ -49,7 +48,6 @@ func TestMetaphone3(t *testing.T) {
 				t.Errorf("At line %d got: <%s>;  want: <%s>", idx+1, got, want[idx])
 			}
 		}
-		idx++
 	}
 }
 
@@ -78,6 +76,9 @@ func readFileLines(name string) (lines []string, err error) {
 		return
 	}
 	lines = strings.Split(strings.ReplaceAll(string(b), "\r", ""), "\n")
+	if b[len(b)-1] == '\n' {
+		lines = lines[:len(lines)-1]
+	}
 	return
 }
 
@@ -101,6 +102,18 @@ func BenchmarkEncode(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		met.Encode(str)
 	}
+}
+
+// 'go test -fuzz=Encode -fuzztime 30s' to run for 30 seconds.  Ctrl+C to stop test.
+func FuzzEncode(f *testing.F) {
+	testCases := []string{"pneumonia", "knewmoanya", "ß", "!12345"}
+	for _, tc := range testCases {
+		f.Add(tc) // Use f.Add to provide a seed corpus
+	}
+	meta := NewMetaphone3(200)
+	f.Fuzz(func(t *testing.T, orig string) {
+		meta.Encode(orig)
+	})
 }
 
 func getWords(b *testing.B) (words []string, size int) {
