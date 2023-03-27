@@ -3,7 +3,7 @@
 // This file is public domain per CC0 1.0, see
 // https://creativecommons.org/publicdomain/mark/1.0/
 //
-// $Id: convenience.go,v 2.37 2023-02-17 10:00:34-05 ron Exp $
+// $Id: convenience.go,v 3.1 2023-03-27 12:16:29-04 ron Exp $
 
 package metaphone3
 
@@ -18,8 +18,8 @@ import (
 	"strings"
 )
 
-// MetaphMap defines a type to store a word list as a Go map indexed by return
-// values from metaphone3.Encode.
+// MetaphMap stores a word list as a Go map of words indexed by keys from
+// metaphone3.Encode.
 type MetaphMap struct {
 	mapper map[string][]string
 	met    *Metaphone3
@@ -140,7 +140,13 @@ func getWordsFromFile(fileName string) (lines []string, err error) {
 		err = fmt.Errorf("trying to read file %s: %v", fileName, err)
 		return
 	}
-	lines = strings.Split(string(noCRs(b)), "\n")
+	s := strings.ReplaceAll(string(b), "\r", "")
+	if len(s) > 0 {
+		lines = strings.Split(s, "\n")
+		if s[len(s)-1] == '\n' {
+			lines = lines[:len(lines)-1]
+		}
+	}
 	return
 }
 
@@ -168,7 +174,7 @@ func (metaph *MetaphMap) MatchWord(word string) []string {
 // mySort stable sorts words into alphabetical order while ignoring case.
 func mySort(words []string) (output []string) {
 	LC := strings.ToLower // alias
-	output = words
+	output = append(output, words...)
 	less := func(i, j int) bool {
 		return LC(output[i]) < LC(output[j])
 	}
@@ -176,13 +182,35 @@ func mySort(words []string) (output []string) {
 	return
 }
 
+// gunzipBytes accepts a gzip compressed byte slice and returns a gunzip'ed
+// byte slice in b.  Any error is returned in err.
+func gunzipBytes(g []byte) (b []byte, err error) {
+	var r io.Reader
+	r = bytes.NewReader(g)
+	if r, err = gzip.NewReader(r); err != nil {
+		err = fmt.Errorf("trying to make a gzip reader: %v", err)
+		return
+	}
+	if b, err = io.ReadAll(r); err != nil {
+		err = fmt.Errorf("trying to read gzip'ed bytes: %v", err)
+	}
+	return
+}
+
 // the frequency of occurrence for each word, as integer: map[word]frequency
 var freqs = map[string]uint8{}
 
 func init() {
-	// get ready for RankWords (wordFrequencies is in wordFreq.go)
-	s := strings.ReplaceAll(wordFrequencies, "\r", "")
+	// get ready for RankWords (gzWordFrequencies is in wordFreq.go)
+	b, err := gunzipBytes(gzWordFrequencies)
+	if err != nil {
+		panic(err)
+	}
+	s := strings.ReplaceAll(string(b), "\r", "")
 	lines := strings.Split(s, "\n")
+	if s[len(s)-1] == '\n' {
+		lines = lines[:len(lines)-1]
+	}
 	var fr uint8 = 200
 	for _, line := range lines {
 		if strings.HasPrefix(line, ".COMMENT") {
@@ -207,11 +235,6 @@ func init() {
 // occurrence in English, so more common words appear earlier in output.
 // The sort is stable.
 func RankWords(words []string) (output []string) {
-	// Could return a copy instead of the original underlying array:
-	//	output = make([]string, len(words))
-	//	copy(output, words)
-	// OR
-	//  output = append(output, words...)
 	LC := strings.ToLower  // alias
 	output = mySort(words) // for consistent output order
 	less := func(i, j int) bool {
@@ -243,26 +266,4 @@ func removeDups(s []string) (out []string) {
 		out = append(out, o)
 	}
 	return
-}
-
-// noCRs returns a copy of the byte slice b with all carriage returns
-// removed.  noCRs assumes UTF-8, ANSI, ASCII or ISO-8859-n encoding.
-// This is optimized for faster copying than using Go's built-in copy
-// function on short lines (with CRs) like a word list contains.
-func noCRs(b []byte) []byte {
-	end := len(b)
-	crCount := bytes.Count(b, []byte{'\r'})
-	output := make([]byte, end-crCount)
-	if crCount == 0 {
-		copy(output, b)
-	} else {
-		i := 0
-		for _, bt := range b {
-			if bt != '\r' {
-				output[i] = bt
-				i++
-			}
-		}
-	}
-	return output
 }
