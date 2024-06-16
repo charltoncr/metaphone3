@@ -3,13 +3,14 @@
 // This file is public domain per CC0 1.0, see
 // https://creativecommons.org/publicdomain/mark/1.0/
 //
-// $Id: convenience.go,v 3.1 2023-03-27 12:16:29-04 ron Exp $
+// $Id: convenience.go,v 3.10 2024-06-16 15:15:17-04 ron Exp $
 
 package metaphone3
 
 import (
 	"bytes"
 	"compress/gzip"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -121,20 +122,27 @@ func (metaph *MetaphMap) AddWordsFromFile(fileName string) error {
 func getWordsFromFile(fileName string) (lines []string, err error) {
 	var b []byte
 	var r io.Reader
+	var gr *gzip.Reader
 	var fp *os.File
 
 	if fp, err = os.Open(fileName); err != nil {
 		err = fmt.Errorf("trying to open file %s: %v", fileName, err)
 		return
 	}
-	defer fp.Close()
+	defer func() {
+		err = errors.Join(err, fp.Close())
+	}()
 	r = fp
 	if strings.HasSuffix(fileName, ".gz") {
-		if r, err = gzip.NewReader(r); err != nil {
+		if gr, err = gzip.NewReader(fp); err != nil {
 			err = fmt.Errorf(
 				"trying to make a gzip reader for file %s: %v", fileName, err)
 			return
 		}
+		defer func() {
+			err = errors.Join(err, gr.Close())
+		}()
+		r = gr
 	}
 	if b, err = io.ReadAll(r); err != nil {
 		err = fmt.Errorf("trying to read file %s: %v", fileName, err)
@@ -185,19 +193,19 @@ func mySort(words []string) (output []string) {
 // gunzipBytes accepts a gzip compressed byte slice and returns a gunzip'ed
 // byte slice in b.  Any error is returned in err.
 func gunzipBytes(g []byte) (b []byte, err error) {
-	var r io.Reader
-	r = bytes.NewReader(g)
-	if r, err = gzip.NewReader(r); err != nil {
-		err = fmt.Errorf("trying to make a gzip reader: %v", err)
+	gzr, err1 := gzip.NewReader(bytes.NewReader(g))
+	if err1 != nil {
+		err = fmt.Errorf("making a gzip reader: %v", err1)
 		return
 	}
-	if b, err = io.ReadAll(r); err != nil {
-		err = fmt.Errorf("trying to read gzip'ed bytes: %v", err)
+	defer gzr.Close()
+	if b, err = io.ReadAll(gzr); err != nil {
+		err = fmt.Errorf("reading gzip'ed bytes: %v", err)
 	}
 	return
 }
 
-// the frequency of occurrence for each word, as integer: map[word]frequency
+// the frequency of occurrence as integer for each word: map[word]frequency
 var freqs = map[string]uint8{}
 
 func init() {
@@ -255,8 +263,18 @@ func RankWords(words []string) (output []string) {
 	return
 }
 
-// removeDups removes duplicate strings in s, also creating a new string
-// slice as a side effect.
+// GetAllWords returns a string slice of the American English words used
+// by RankWords for evaluation.  The slice contains the most commonly
+// occurring 70% of American English words, taken from the SCOWL word lists.
+func GetAllWords() (output []string) {
+	for w := range freqs {
+		output = append(output, w)
+	}
+	output = mySort(output)
+	return
+}
+
+// removeDups creates a new string slice from s without duplicated strings.
 func removeDups(s []string) (out []string) {
 	m := make(map[string]struct{})
 	for _, w := range s {

@@ -17,6 +17,7 @@ package metaphone3
 
 import (
 	"compress/gzip"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -24,7 +25,7 @@ import (
 	"testing"
 )
 
-// $Id: metaphone3_test.go,v 1.29 2023-03-21 09:23:18-04 ron Exp $
+// $Id: metaphone3_test.go,v 1.39 2024-06-16 15:13:33-04 ron Exp $
 
 const maxlength = 6
 
@@ -52,31 +53,38 @@ func TestMetaphone3(t *testing.T) {
 }
 
 // readFileLines reads a (gzipped) text file and returns its lines.
-// Parameter name is the file's name.  Carriage returns are skipped.
-func readFileLines(name string) (lines []string, err error) {
+// Carriage returns are omitted.
+func readFileLines(fileName string) (lines []string, err error) {
 	var b []byte
 	var r io.Reader
+	var gr *gzip.Reader
 	var fp *os.File
 
-	if fp, err = os.Open(name); err != nil {
-		err = fmt.Errorf("trying to open file %s: %v", name, err)
+	if fp, err = os.Open(fileName); err != nil {
+		err = fmt.Errorf("opening file %s: %v", fileName, err)
 		return
 	}
-	defer fp.Close()
+	defer func() {
+		err = errors.Join(err, fp.Close())
+	}()
 	r = fp
-	if strings.HasSuffix(name, ".gz") {
-		if r, err = gzip.NewReader(r); err != nil {
+	if strings.HasSuffix(fileName, ".gz") {
+		if gr, err = gzip.NewReader(fp); err != nil {
 			err = fmt.Errorf(
-				"trying to make a gzip reader for file %s: %v", name, err)
+				"making a gzip reader for file %s: %v", fileName, err)
 			return
 		}
+		defer func() {
+			err = errors.Join(err, gr.Close())
+		}()
+		r = gr
 	}
 	if b, err = io.ReadAll(r); err != nil {
-		err = fmt.Errorf("trying to read word list file %s: %v", name, err)
+		err = fmt.Errorf("reading word list file %s: %v", fileName, err)
 		return
 	}
 	lines = strings.Split(strings.ReplaceAll(string(b), "\r", ""), "\n")
-	if b[len(b)-1] == '\n' {
+	if len(b) > 0 && b[len(b)-1] == '\n' {
 		lines = lines[:len(lines)-1]
 	}
 	return
@@ -91,6 +99,30 @@ func TestConvenience(t *testing.T) {
 	if len(words) != 11 {
 		t.Errorf("got: %d;  want: 11", len(words))
 	}
+	found := false
+	for _, w := range words {
+		if w == "pneumonia" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("matching 'knewmoanya' didn't find 'pneumonia'")
+	}
+}
+
+// 'go test -fuzz=FuzzEncode -fuzztime 30s' to run for 30 seconds.
+// Ctrl+C to stop test if fuzztime is not specified.
+func FuzzEncode(f *testing.F) {
+	testCases := []string{"pneumonia", "knewmoanya", "ß", "Ç", "Ð", "Ñ",
+		"Þ", "\u008a", "\u008e", "12345!"}
+	for _, tc := range testCases {
+		f.Add(tc) // Use f.Add to provide a seed corpus
+	}
+	meta := NewMetaphone3(200)
+	f.Fuzz(func(t *testing.T, orig string) {
+		meta.Encode(orig)
+	})
 }
 
 func BenchmarkEncode(b *testing.B) {
@@ -102,18 +134,6 @@ func BenchmarkEncode(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		met.Encode(str)
 	}
-}
-
-// 'go test -fuzz=Encode -fuzztime 30s' to run for 30 seconds.  Ctrl+C to stop test.
-func FuzzEncode(f *testing.F) {
-	testCases := []string{"pneumonia", "knewmoanya", "ß", "!12345"}
-	for _, tc := range testCases {
-		f.Add(tc) // Use f.Add to provide a seed corpus
-	}
-	meta := NewMetaphone3(200)
-	f.Fuzz(func(t *testing.T, orig string) {
-		meta.Encode(orig)
-	})
 }
 
 func getWords(b *testing.B) (words []string, size int) {
